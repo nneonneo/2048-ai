@@ -192,6 +192,40 @@ void init_score_tables(void) {
                 score += (rank-1) * powf(2, rank);
             }
         }
+
+        int maxi = 0;
+        int maxrank = 0;
+        for(i=0; i<4; i++) {
+            int rank = (row >> (4*i)) & 0xf;
+            if(rank > maxrank) {
+                maxrank = rank;
+                maxi = i;
+            }
+        }
+
+        if(maxi == 0 || maxi == 3)
+            heur_score += 20000;
+
+#if 0
+        float mono_inc=0, mono_dec=0;
+        for(i=0; i<3; i++) {
+            int rank = (row >> (4*i)) & 0xf;
+            int nextrank = (row >> (4*(i+1))) & 0xf;
+            if(rank == nextrank+1) {
+                mono_dec += 1200;
+            } else if(rank == nextrank-1) {
+                mono_inc += 1200;
+            } else {
+                mono_dec -= 400;
+                mono_inc -= 400;
+            }
+        }
+        if(mono_inc > mono_dec)
+            heur_score += mono_inc;
+        else
+            heur_score += mono_dec;
+#endif
+
         row_score_table[row] = score;
         row_heur_score_table[row] = heur_score;
     }
@@ -202,8 +236,13 @@ void init_score_tables(void) {
     (tbl)[((board) >> 32) & ROW_MASK] + \
     (tbl)[((board) >> 48) & ROW_MASK])
 
+#define SCORE_COL_BOARD(board,tbl) ((tbl)[pack_col((board) & COL_MASK)] + \
+    (tbl)[pack_col(((board) >> 4) & COL_MASK)] + \
+    (tbl)[pack_col(((board) >> 8) & COL_MASK)] + \
+    (tbl)[pack_col(((board) >> 12) & COL_MASK)])
+
 static float score_heur_board(board_t board) {
-    return SCORE_BOARD(board, row_heur_score_table) + 100000;
+    return SCORE_BOARD(board, row_heur_score_table) + SCORE_COL_BOARD(board, row_heur_score_table) + 100000;
 }
 
 static float score_board(board_t board) {
@@ -234,11 +273,12 @@ static float score_tilechoose_node(eval_state &state, board_t board, float cprob
 /* Statistics and controls */
 // cprob: cumulative probability
 /* don't recurse into a node with a cprob less than this threshold */
-#define CPROB_THRESH_BASE (0.001f)
-#define CACHE_DEPTH_LIMIT 4
+#define CPROB_THRESH_BASE (0.0001f)
+#define CACHE_DEPTH_LIMIT 6
+#define SEARCH_DEPTH_LIMIT 9
 
 static float score_move_node(eval_state &state, board_t board, float cprob) {
-    if(cprob < state.cprob_thresh || state.curdepth > 5) {
+    if(cprob < state.cprob_thresh || state.curdepth >= SEARCH_DEPTH_LIMIT) {
         if(state.curdepth > state.maxdepth)
             state.maxdepth = state.curdepth;
         return score_heur_board(board);
