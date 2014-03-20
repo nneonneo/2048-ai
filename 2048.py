@@ -5,7 +5,7 @@ import time
 import os
 import socket
 import json
-import numpy as np
+import math
 import re
 
 # Enable multithreading?
@@ -21,20 +21,33 @@ ailib.score_toplevel_move.restype = ctypes.c_float
 
 def to_c_board(m):
     board = 0
-    for i,v in enumerate(m.flatten()):
-        board |= v << (4*i)
+    i = 0
+    for row in m:
+        for c in row:            
+            board |= c << (4*i)
+            i += 1
     return board
 
+def print_board(m):
+    for row in m:
+        for c in row:
+            print '%8d' % c,
+        print
+
+def _to_val(c):
+    if c == 0: return 0
+    return 2**c
+
 def to_val(m):
-    vals = 2**m
-    vals[m == 0] = 0
-    return vals
+    return [[_to_val(c) for c in row] for row in m]
+
+def _to_score(c):
+    if c <= 1:
+        return 0
+    return (c-1) * (2**c)
 
 def to_score(m):
-    vals = 2**m
-    vals *= m-1
-    vals[m <= 1] = 0
-    return vals
+    return [[_to_score(c) for c in row] for row in m]
 
 if MULTITHREAD:
     from multiprocessing.pool import ThreadPool
@@ -45,8 +58,8 @@ if MULTITHREAD:
     def find_best_move(m):
         board = to_c_board(m)
 
-        print to_val(m)
-        print "Current approx. score:", to_score(m).sum()
+        print_board(to_val(m))
+        print "Current approx. score:", sum(sum(row) for row in m)
 
         scores = pool.map(score_toplevel_move, [(board, move) for move in xrange(4)])
         bestmove, bestscore = max(enumerate(scores), key=lambda x:x[1])
@@ -82,7 +95,7 @@ class BrowserRemoteControl(object):
 
 def get_board(ctrl):
     res = ctrl.execute("var res = []; var tiles = tileContainer.children; for(var i=0; i<tiles.length; i++) res.push(tiles[i].className); res")
-    board = np.zeros((4,4), dtype=int)
+    board = [[0]*4 for _ in xrange(4)]
     for tile in res:
         tval = pos = None
         for k in tile.split():
@@ -92,7 +105,7 @@ def get_board(ctrl):
             m = re.match(r'^tile-position-(\d+)-(\d+)$', k)
             if m:
                 pos = int(m.group(1)), int(m.group(2))
-        board[pos[1]-1, pos[0]-1] = np.round(np.log2(tval))
+        board[pos[1]-1][pos[0]-1] = int(round(math.log(tval, 2)))
 
     return board
 
