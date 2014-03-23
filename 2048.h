@@ -18,12 +18,20 @@
 typedef uint64_t board_t;
 typedef uint16_t row_t;
 
-#define _BOARDCHR(v) ("0123456789abcdef"[(v)&0xf])
-#define _ROWCHR(v) _BOARDCHR(v), _BOARDCHR((v)>>4), _BOARDCHR((v)>>8), _BOARDCHR((v)>>12)
-#define BOARDSTR(board,sep) ((char []){_ROWCHR(board), sep, _ROWCHR((board)>>16), sep, _ROWCHR((board)>>32), sep, _ROWCHR((board)>>48), 0})
-#define PRINTBOARD(board) printf("%s\n", BOARDSTR(board, '\n'))
 #define ROW_MASK 0xFFFFULL
 #define COL_MASK 0x000F000F000F000FULL
+
+static inline void print_board(board_t board) {
+    int i,j;
+    for(i=0; i<4; i++) {
+        for(j=0; j<4; j++) {
+            printf("%c", "0123456789abcdef"[(board)&0xf]);
+            board >>= 4;
+        }
+        printf("\n");
+    }
+    printf("\n");
+}
 
 static inline row_t pack_col(board_t col) {
     return (row_t)(col | (col >> 12) | (col >> 24) | (col >> 36));
