@@ -137,7 +137,7 @@ def rungame(args):
         port = 32000
 
     ctrl = BrowserRemoteControl(port)
-    ctrl.execute("var elems = document.getElementsByTagName('div'); for(var i in elems) if(elems[i].className == 'tile-container') tileContainer = elems[i];")
+    ctrl.execute("var elems = document.getElementsByTagName('div'); for(var i in elems) if(elems[i].className == 'tile-container') {tileContainer = elems[i]; break;}")
 
     while 1:
         state = check_end(ctrl)
