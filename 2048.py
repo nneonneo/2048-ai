@@ -59,7 +59,7 @@ if MULTITHREAD:
         board = to_c_board(m)
 
         print_board(to_val(m))
-        print "Current approx. score:", sum(sum(row) for row in m)
+        print "Current approx. score:", sum(_to_score(c) for row in m for c in row)
 
         scores = pool.map(score_toplevel_move, [(board, move) for move in xrange(4)])
         bestmove, bestscore = max(enumerate(scores), key=lambda x:x[1])
