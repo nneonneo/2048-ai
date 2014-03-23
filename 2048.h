@@ -1,8 +1,4 @@
-/* Define UNIF_RANDOM as a random number generator returning a value in [0..n-1].
- * 
- * If you don't have arc4random_uniform, try using a regular PRNG (like random()) mod n,
- * with added bias correction logic. */
-#define UNIF_RANDOM(n) arc4random_uniform(n)
+#include <stdlib.h>
 
 /* The fundamental trick: the 4x4 board is represented as a 64-bit word,
  * with each board square packed into a single 4-bit nibble.
@@ -20,6 +16,49 @@ typedef uint16_t row_t;
 
 #define ROW_MASK 0xFFFFULL
 #define COL_MASK 0x000F000F000F000FULL
+
+/* unif_random is defined as a random number generator returning a value in [0..n-1]. */
+#if defined(__APPLE__)
+static inline unsigned unif_random(unsigned n) {
+    return arc4random_uniform(n);
+}
+#elif defined(__linux__)
+// Warning: This is a slightly biased RNG.
+#include <unistd.h>
+#include <fcntl.h>
+static inline unsigned unif_random(unsigned n) {
+    static int seeded = 0;
+
+    if(!seeded) {
+        int fd = open("/dev/urandom", O_RDONLY);
+        unsigned short seed[3];
+        if(fd < 0 || read(fd, seed, sizeof(seed)) < (int)sizeof(seed)) {
+            srand48(time(NULL));
+        } else {
+            seed48(seed);
+        }
+        if(fd >= 0)
+            close(fd);
+
+        seeded = 1;
+    }
+
+    return (int)(drand48() * n);
+}
+#else
+// Warning: This is a slightly biased RNG.
+#include <time.h>
+static inline unsigned unif_random(unsigned n) {
+    static int seeded = 0;
+
+    if(!seeded) {
+        srand(time(NULL));
+        seeded = 1;
+    }
+
+    return rand() % n;
+}
+#endif
 
 static inline void print_board(board_t board) {
     int i,j;

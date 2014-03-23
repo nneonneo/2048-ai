@@ -395,7 +395,7 @@ int ask_for_move(board_t board) {
 
 /* Playing the game */
 static int draw_tile() {
-    return (UNIF_RANDOM(10) < 9) ? 1 : 2;
+    return (unif_random(10) < 9) ? 1 : 2;
 }
 
 static board_t insert_tile_rand(board_t board, int tile) {
@@ -410,7 +410,7 @@ static board_t insert_tile_rand(board_t board, int tile) {
         return board;
     }
 
-    int index = UNIF_RANDOM(num_open);
+    int index = unif_random(num_open);
     for(int i=0; i<16; i++) {
         if(((board >> (4*i)) & 0xf) != 0)
             continue;
