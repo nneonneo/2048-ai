@@ -116,6 +116,14 @@ def keypress(ctrl, type, key):
 '''keyboardEvent[initMethod]("%s", true, true, window, false, false, false, false, %d, 0);'''
 '''document.dispatchEvent(keyboardEvent);''' % (type, key))
 
+def check_end(ctrl):
+    ''' Check if the game has ended. Continue the game automatically if it gets to the win screen. '''
+    return ctrl.execute(
+'var messageContainer = document.querySelector(".game-message");'
+'if(messageContainer.className.search(/game-over/) !== -1) {"ended"}'
+'else if(messageContainer.className.search(/game-won/) !== -1) {document.querySelector(".keep-playing-button").click(); "continued"}'
+'else {"running"}')
+
 def do_move(ctrl, move):
     key = [38, 40, 37, 39][move]
     keypress(ctrl, 'keydown', key)
@@ -132,6 +140,11 @@ def rungame(args):
     ctrl.execute("var elems = document.getElementsByTagName('div'); for(var i in elems) if(elems[i].className == 'tile-container') tileContainer = elems[i];")
 
     while 1:
+        state = check_end(ctrl)
+        if state == 'ended':
+            print "Game over."
+            break
+
         board = get_board(ctrl)
         move = find_best_move(board)
         if move < 0:
