@@ -26,6 +26,7 @@ static inline unsigned unif_random(unsigned n) {
 // Warning: This is a slightly biased RNG.
 #include <unistd.h>
 #include <fcntl.h>
+#include <time.h>
 static inline unsigned unif_random(unsigned n) {
     static int seeded = 0;
 
