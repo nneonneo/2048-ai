@@ -1,4 +1,4 @@
-CPPFLAGS += -O3 -Wall -Werror -Wextra
+CPPFLAGS += -O3 -Wall -Werror -Wextra -fPIC
 
 all: bin/2048 bin/2048.so
 
