@@ -206,25 +206,24 @@ void init_score_tables(void) {
         if(maxi == 0 || maxi == 3)
             heur_score += 20000;
 
-#if 0
-        float mono_inc=0, mono_dec=0;
-        for(i=0; i<3; i++) {
+        // Check if maxis are close to eachother, and of diff ranks (eg 128 256)
+        int oldrank = 0;
+        for(i=0; i<4; i++) {
             int rank = (row >> (4*i)) & 0xf;
-            int nextrank = (row >> (4*(i+1))) & 0xf;
-            if(rank == nextrank+1) {
-                mono_dec += 1200;
-            } else if(rank == nextrank-1) {
-                mono_inc += 1200;
-            } else {
-                mono_dec -= 400;
-                mono_inc -= 400;
+            if ((rank == oldrank + 1) || (rank == oldrank - 1)) {
+                heur_score += 1000;
             }
+            oldrank = rank;
         }
-        if(mono_inc > mono_dec)
-            heur_score += mono_inc;
-        else
-            heur_score += mono_dec;
-#endif
+
+        // Check if the values are ordered:
+        int rank1 = (row >> (4)) & 0xf;
+        int rank2 = (row >> (8)) & 0xf;
+        int rank3 = (row >> (12)) & 0xf;
+        int rank4 = (row >> (16)) & 0xf;
+
+        if ((rank1 < rank2) && (rank2 < rank3) && (rank3 < rank4)) heur_score += 10000;
+        if ((rank1 > rank2) && (rank2 > rank3) && (rank3 > rank4)) heur_score += 10000;
 
         row_score_table[row] = score;
         row_heur_score_table[row] = heur_score;
@@ -275,7 +274,7 @@ static float score_tilechoose_node(eval_state &state, board_t board, float cprob
 /* don't recurse into a node with a cprob less than this threshold */
 #define CPROB_THRESH_BASE (0.0001f)
 #define CACHE_DEPTH_LIMIT 6
-#define SEARCH_DEPTH_LIMIT 9
+#define SEARCH_DEPTH_LIMIT 7
 
 static float score_move_node(eval_state &state, board_t board, float cprob) {
     if(cprob < state.cprob_thresh || state.curdepth >= SEARCH_DEPTH_LIMIT) {
