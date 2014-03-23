@@ -7,8 +7,8 @@
 /* The fundamental trick: the 4x4 board is represented as a 64-bit word,
  * with each board square packed into a single 4-bit nibble.
  * 
- * The maximum possible board value that can be supported is 12288 (=15), but
- * this is a minor limitation. The highest tile in the game appears to be 6144.
+ * The maximum possible board value that can be supported is 32768 (2^15), but
+ * this is a minor limitation as achieving 65536 is highly unlikely under normal circumstances.
  * 
  * The space and computation savings from using this representation should be significant.
  * 
