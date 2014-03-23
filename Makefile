@@ -1,4 +1,4 @@
-CPPFLAGS += -O3 -Wall -Werror -Wextra -std=c++11
+CPPFLAGS += -O3 -Wall -Werror -Wextra
 
 all: bin/2048 bin/2048.so
 

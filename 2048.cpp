@@ -151,7 +151,8 @@ static float line_heur_score_table[65536];
 static float row_score_table[65536];
 
 struct eval_state {
-    std::map<board_t, float> trans_table; // transposition table, to cache previously-seen moves
+    typedef std::map<board_t, float> trans_table_t;
+    trans_table_t trans_table; // transposition table, to cache previously-seen moves
     float cprob_thresh;
     int maxdepth;
     int curdepth;
@@ -278,7 +279,7 @@ static float score_move_node(eval_state &state, board_t board, float cprob) {
     }
 
     if(state.curdepth < CACHE_DEPTH_LIMIT) {
-        const auto &i = state.trans_table.find(board);
+        const eval_state::trans_table_t::iterator &i = state.trans_table.find(board);
         if(i != state.trans_table.end()) {
             state.cachehits++;
             return i->second;
