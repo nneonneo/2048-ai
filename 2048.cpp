@@ -147,7 +147,7 @@ static inline int get_max_rank(board_t board) {
 }
 
 /* Optimizing the game */
-static float row_heur_score_table[65536];
+static float line_heur_score_table[65536];
 static float row_score_table[65536];
 
 struct eval_state {
@@ -174,16 +174,17 @@ static float score_tilechoose_node(eval_state &state, board_t board, float cprob
 void init_score_tables(void) {
     unsigned row;
 
-    memset(row_heur_score_table, 0, sizeof(row_heur_score_table));
+    memset(line_heur_score_table, 0, sizeof(line_heur_score_table));
     memset(row_score_table, 0, sizeof(row_score_table));
 
     for(row = 0; row < 65536; row++) {
+        unsigned int line[4] = {row & 0xf, (row >> 4) & 0xf, (row >> 8) & 0xf, (row >> 12) & 0xf};
         int i;
         float heur_score = 0;
         float score = 0;
 
         for(i=0; i<4; i++) {
-            int rank = (row >> (4*i)) & 0xf;
+            int rank = line[i];
 
             if(rank == 0) {
                 heur_score += 10000;
@@ -196,7 +197,8 @@ void init_score_tables(void) {
         int maxi = 0;
         int maxrank = 0;
         for(i=0; i<4; i++) {
-            int rank = (row >> (4*i)) & 0xf;
+            int rank = line[i];
+
             if(rank > maxrank) {
                 maxrank = rank;
                 maxi = i;
@@ -207,26 +209,18 @@ void init_score_tables(void) {
             heur_score += 20000;
 
         // Check if maxis are close to eachother, and of diff ranks (eg 128 256)
-        int oldrank = 0;
-        for(i=0; i<4; i++) {
-            int rank = (row >> (4*i)) & 0xf;
-            if ((rank == oldrank + 1) || (rank == oldrank - 1)) {
+        for(i=1; i<4; i++) {
+            if ((line[i] == line[i-1] + 1) || (line[i] == line[i-1] - 1)) {
                 heur_score += 1000;
             }
-            oldrank = rank;
         }
 
         // Check if the values are ordered:
-        int rank1 = (row >> (4)) & 0xf;
-        int rank2 = (row >> (8)) & 0xf;
-        int rank3 = (row >> (12)) & 0xf;
-        int rank4 = (row >> (16)) & 0xf;
-
-        if ((rank1 < rank2) && (rank2 < rank3) && (rank3 < rank4)) heur_score += 10000;
-        if ((rank1 > rank2) && (rank2 > rank3) && (rank3 > rank4)) heur_score += 10000;
+        if ((line[0] < line[1]) && (line[1] < line[2]) && (line[2] < line[3])) heur_score += 10000;
+        if ((line[0] > line[1]) && (line[1] > line[2]) && (line[2] > line[3])) heur_score += 10000;
 
         row_score_table[row] = score;
-        row_heur_score_table[row] = heur_score;
+        line_heur_score_table[row] = heur_score;
     }
 }
 
@@ -241,7 +235,7 @@ void init_score_tables(void) {
     (tbl)[pack_col(((board) >> 12) & COL_MASK)])
 
 static float score_heur_board(board_t board) {
-    return SCORE_BOARD(board, row_heur_score_table) + SCORE_COL_BOARD(board, row_heur_score_table) + 100000;
+    return SCORE_BOARD(board, line_heur_score_table) + SCORE_COL_BOARD(board, line_heur_score_table) + 100000;
 }
 
 static float score_board(board_t board) {
