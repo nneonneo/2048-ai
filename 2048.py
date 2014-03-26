@@ -130,6 +130,17 @@ def do_move(ctrl, move):
     time.sleep(0.01)
     keypress(ctrl, 'keyup', key)
 
+def wait_for_change(ctrl, board):
+    for i in xrange(100):
+        newboard = get_board(ctrl)
+        time.sleep(0.01)
+        if board != newboard:
+            break
+    else:
+        print "Timed out waiting for move to apply!"
+
+    return get_board(ctrl)
+
 def rungame(args):
     if len(args) == 1:
         port = int(args[0])
@@ -139,19 +150,20 @@ def rungame(args):
     ctrl = BrowserRemoteControl(port)
     ctrl.execute("var elems = document.getElementsByTagName('div'); for(var i in elems) if(elems[i].className == 'tile-container') {tileContainer = elems[i]; break;}")
 
+    board = get_board(ctrl)
+
     while 1:
         state = check_end(ctrl)
         if state == 'ended':
             print "Game over."
             break
 
-        board = get_board(ctrl)
         move = find_best_move(board)
         if move < 0:
             break
         print "Recommended move:", movename(move)
         do_move(ctrl, move)
-        time.sleep(0.05)
+        board = wait_for_change(ctrl, board)
 
 if __name__ == '__main__':
     import sys
