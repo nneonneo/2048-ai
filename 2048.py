@@ -114,7 +114,7 @@ def keypress(ctrl, type, key):
 '''var keyboardEvent = document.createEvent("KeyboardEvent");'''
 '''var initMethod = typeof keyboardEvent.initKeyboardEvent !== 'undefined' ? "initKeyboardEvent" : "initKeyEvent";'''
 '''keyboardEvent[initMethod]("%s", true, true, window, false, false, false, false, %d, 0);'''
-'''document.dispatchEvent(keyboardEvent);''' % (type, key))
+'''(document.body || document).dispatchEvent(keyboardEvent);''' % (type, key))
 
 def check_end(ctrl):
     ''' Check if the game has ended. Continue the game automatically if it gets to the win screen. '''
