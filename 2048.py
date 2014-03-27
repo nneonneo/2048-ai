@@ -83,6 +83,8 @@ def rungame(args):
     gamectrl = Fast2048Control(ctrl)
     # gamectrl = Keyboard2048Control(ctrl)
 
+    moveno = 0
+    start = time.time()
     while 1:
         state = gamectrl.get_status()
         if state == 'ended':
@@ -92,11 +94,12 @@ def rungame(args):
             time.sleep(3)
             gamectrl.continue_game()
 
+        moveno += 1
         board = gamectrl.get_board()
         move = find_best_move(board)
         if move < 0:
             break
-        print "Recommended move:", movename(move)
+        print "%010.6f: Move %d: %s" % (time.time() - start, moveno, movename(move))
         gamectrl.execute_move(move)
 
 if __name__ == '__main__':
