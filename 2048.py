@@ -3,10 +3,6 @@
 import ctypes
 import time
 import os
-import socket
-import json
-import math
-import re
 
 # Enable multithreading?
 MULTITHREAD = True
@@ -74,96 +70,34 @@ else:
 def movename(move):
     return ['up', 'down', 'left', 'right'][move]
 
-class BrowserRemoteControl(object):
-    def __init__(self, port):
-        self.sock = socket.socket()
-        self.sock.connect(('', port))
-
-    def execute(self, cmd):
-        self.sock.send(cmd + '\r\n')
-        ret = []
-        while True:
-            chunk = self.sock.recv(4096)
-            ret.append(chunk)
-            if '\n' in chunk:
-                break
-        res = json.loads(''.join(ret))
-        if 'error' in res:
-            raise Exception(res['error'])
-        else:
-            return res['result']
-
-def get_board(ctrl):
-    res = ctrl.execute("var res = []; var tiles = tileContainer.children; for(var i=0; i<tiles.length; i++) res.push(tiles[i].className); res")
-    board = [[0]*4 for _ in xrange(4)]
-    for tile in res:
-        tval = pos = None
-        for k in tile.split():
-            m = re.match(r'^tile-(\d+)$', k)
-            if m:
-                tval = int(m.group(1))
-            m = re.match(r'^tile-position-(\d+)-(\d+)$', k)
-            if m:
-                pos = int(m.group(1)), int(m.group(2))
-        board[pos[1]-1][pos[0]-1] = int(round(math.log(tval, 2)))
-
-    return board
-
-def keypress(ctrl, type, key):
-    ctrl.execute(
-'''var keyboardEvent = document.createEvent("KeyboardEvent");'''
-'''var initMethod = typeof keyboardEvent.initKeyboardEvent !== 'undefined' ? "initKeyboardEvent" : "initKeyEvent";'''
-'''keyboardEvent[initMethod]("%s", true, true, window, false, false, false, false, %d, 0);'''
-'''(document.body || document).dispatchEvent(keyboardEvent);''' % (type, key))
-
-def check_end(ctrl):
-    ''' Check if the game has ended. Continue the game automatically if it gets to the win screen. '''
-    return ctrl.execute(
-'var messageContainer = document.querySelector(".game-message");'
-'if(messageContainer.className.search(/game-over/) !== -1) {"ended"}'
-'else if(messageContainer.className.search(/game-won/) !== -1) {document.querySelector(".keep-playing-button").click(); "continued"}'
-'else {"running"}')
-
-def do_move(ctrl, move):
-    key = [38, 40, 37, 39][move]
-    keypress(ctrl, 'keydown', key)
-    time.sleep(0.01)
-    keypress(ctrl, 'keyup', key)
-
-def wait_for_change(ctrl, board):
-    for i in xrange(100):
-        newboard = get_board(ctrl)
-        time.sleep(0.01)
-        if board != newboard:
-            break
-    else:
-        print "Timed out waiting for move to apply!"
-
-    return get_board(ctrl)
-
 def rungame(args):
+    from gamectrl import BrowserRemoteControl, Fast2048Control, Keyboard2048Control
+
     if len(args) == 1:
         port = int(args[0])
     else:
         port = 32000
 
     ctrl = BrowserRemoteControl(port)
-    ctrl.execute("var elems = document.getElementsByTagName('div'); for(var i in elems) if(elems[i].className == 'tile-container') {tileContainer = elems[i]; break;}")
-
-    board = get_board(ctrl)
+    # Use Keyboard2048Control if Fast2048Control doesn't seem to be working.
+    gamectrl = Fast2048Control(ctrl)
+    # gamectrl = Keyboard2048Control(ctrl)
 
     while 1:
-        state = check_end(ctrl)
+        state = gamectrl.get_status()
         if state == 'ended':
             print "Game over."
             break
+        elif state == 'won':
+            time.sleep(3)
+            gamectrl.continue_game()
 
+        board = gamectrl.get_board()
         move = find_best_move(board)
         if move < 0:
             break
         print "Recommended move:", movename(move)
-        do_move(ctrl, move)
-        board = wait_for_change(ctrl, board)
+        gamectrl.execute_move(move)
 
 if __name__ == '__main__':
     import sys
