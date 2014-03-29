@@ -85,14 +85,14 @@ class Fast2048Control(Generic2048Control):
         self.execute('GameManager.prototype.setup = _func_tmp;')
 
     def get_board(self):
-        grid = self.execute('GameManager._instance.grid.serialize()')
+        grid = self.execute('GameManager._instance.grid')
 
         board = [[0]*4 for _ in xrange(4)]
         for row in grid['cells']:
             for cell in row:
                 if cell is None:
                     continue
-                pos = cell['position']['x'], cell['position']['y']
+                pos = cell['x'], cell['y']
                 tval = cell['value']
                 board[pos[1]][pos[0]] = int(round(math.log(tval, 2)))
 
