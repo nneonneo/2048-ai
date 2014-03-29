@@ -91,7 +91,7 @@ def rungame(args):
             print "Game over."
             break
         elif state == 'won':
-            time.sleep(3)
+            time.sleep(0.75)
             gamectrl.continue_game()
 
         moveno += 1
