@@ -8,7 +8,7 @@ class BrowserRemoteControl(object):
     ''' Interact with a web browser running the Remote Control extension. '''
     def __init__(self, port):
         self.sock = socket.socket()
-        self.sock.connect(('', port))
+        self.sock.connect(('localhost', port))
 
     def execute(self, cmd):
         self.sock.send(cmd.replace('\n', ' ') + '\r\n')
