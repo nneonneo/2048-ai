@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include "platdefs.h"
 
 /* The fundamental trick: the 4x4 board is represented as a 64-bit word,
  * with each board square packed into a single 4-bit nibble.
@@ -16,50 +17,6 @@ typedef uint16_t row_t;
 
 #define ROW_MASK 0xFFFFULL
 #define COL_MASK 0x000F000F000F000FULL
-
-/* unif_random is defined as a random number generator returning a value in [0..n-1]. */
-#if defined(__APPLE__)
-static inline unsigned unif_random(unsigned n) {
-    return arc4random_uniform(n);
-}
-#elif defined(__linux__)
-// Warning: This is a slightly biased RNG.
-#include <unistd.h>
-#include <fcntl.h>
-#include <time.h>
-static inline unsigned unif_random(unsigned n) {
-    static int seeded = 0;
-
-    if(!seeded) {
-        int fd = open("/dev/urandom", O_RDONLY);
-        unsigned short seed[3];
-        if(fd < 0 || read(fd, seed, sizeof(seed)) < (int)sizeof(seed)) {
-            srand48(time(NULL));
-        } else {
-            seed48(seed);
-        }
-        if(fd >= 0)
-            close(fd);
-
-        seeded = 1;
-    }
-
-    return (int)(drand48() * n);
-}
-#else
-// Warning: This is a slightly biased RNG.
-#include <time.h>
-static inline unsigned unif_random(unsigned n) {
-    static int seeded = 0;
-
-    if(!seeded) {
-        srand(time(NULL));
-        seeded = 1;
-    }
-
-    return rand() % n;
-}
-#endif
 
 static inline void print_board(board_t board) {
     int i,j;
@@ -91,14 +48,14 @@ static inline row_t reverse_row(row_t row) {
 extern "C" {
 #endif
 
-void init_score_tables(void);
-void init_move_tables(void);
+DLL_PUBLIC void init_score_tables(void);
+DLL_PUBLIC void init_move_tables(void);
 
 typedef int (*get_move_func_t)(board_t);
-float score_toplevel_move(board_t board, int move);
-int find_best_move(board_t board);
-int ask_for_move(board_t board);
-void play_game(get_move_func_t get_move);
+DLL_PUBLIC float score_toplevel_move(board_t board, int move);
+DLL_PUBLIC int find_best_move(board_t board);
+DLL_PUBLIC int ask_for_move(board_t board);
+DLL_PUBLIC void play_game(get_move_func_t get_move);
 
 #ifdef __cplusplus
 }

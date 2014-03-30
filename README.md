@@ -2,7 +2,22 @@ AI for the [2048 game](http://gabrielecirulli.github.io/2048/). This uses *expec
 
 ## Building
 
+### Unix/Linux/OS X
+
 Run `make`. Any relatively recent C++ compiler should be able to build the output.
+
+### Windows
+
+You have a few options, depending on what you have installed.
+
+- Pure Cygwin: run `make`. The resulting DLL can *only* be used with Cygwin programs, so
+to run the browser control version, you must use the Cygwin Python (not the python.org Python).
+- Cygwin with MinGW: run
+
+      CXX=x86_64-w64-mingw32-g++ CXXFLAGS='-static-libstdc++ -static-libgcc -D_WINDLL -D_GNU_SOURCE=1' make
+
+to build. The resultant DLL can be used with non-Cygwin programs.
+- Visual Studio: open a Visual Studio command prompt, `cd` to the 2048-ai directory, and run `make-msvc.bat`.
 
 ## Running the command-line version
 
