@@ -39,8 +39,7 @@ class Generic2048Control(object):
 
     def get_status(self):
         ''' Check if the game is in an unusual state. '''
-        return self.execute(
-            '''
+        return self.execute('''
             var messageContainer = document.querySelector(".game-message");
             if(messageContainer.className.search(/game-over/) !== -1) {"ended"}
             else if(messageContainer.className.search(/game-won/) !== -1) {"won"}
@@ -61,11 +60,12 @@ class Generic2048Control(object):
         self.execute('document.querySelector(".keep-playing-button").click();')
 
     def send_key_event(self, action, key):
-        return self.execute(
-            '''var keyboardEvent = document.createEvent("KeyboardEvent");'''
-            '''var initMethod = typeof keyboardEvent.initKeyboardEvent !== 'undefined' ? "initKeyboardEvent" : "initKeyEvent";'''
-            '''keyboardEvent[initMethod]("%s", true, true, window, false, false, false, false, %d, 0);'''
-            '''(document.body || document).dispatchEvent(keyboardEvent);''' % (action, key))
+        return self.execute('''
+            var keyboardEvent = document.createEvent("KeyboardEvent");
+            var initMethod = typeof keyboardEvent.initKeyboardEvent !== 'undefined' ? "initKeyboardEvent" : "initKeyEvent";
+            keyboardEvent[initMethod]("%s", true, true, window, false, false, false, false, %d, 0);
+            (document.body || document).dispatchEvent(keyboardEvent);
+            ''' % (action, key))
 
 class Fast2048Control(Generic2048Control):
     ''' Control 2048 by hooking the GameManager and executing its move() function.
@@ -89,6 +89,9 @@ class Fast2048Control(Generic2048Control):
         self.send_key_event('keyup', 38)
 
         self.execute('GameManager.prototype.isGameTerminated = _func_tmp;')
+
+    def get_score(self):
+        return self.execute('GameManager._instance.score')
 
     def get_board(self):
         grid = self.execute('GameManager._instance.grid')
@@ -126,6 +129,21 @@ class Keyboard2048Control(Generic2048Control):
                     break;
                 }
             ''')
+
+    def get_score(self):
+        score = self.execute('''
+            var scoreContainer = document.querySelector(".score-container");
+            var scoreText = '';
+            var scoreChildren = scoreContainer.childNodes;
+            for(var i = 0; i < scoreChildren.length; ++i) {
+                if(scoreChildren[i].nodeType == Node.TEXT_NODE) {
+                    scoreText += scoreChildren[i].textContent;
+                }
+            }
+            scoreText;
+            ''')
+
+        return int(score)
 
     def get_board(self):
         res = self.execute(

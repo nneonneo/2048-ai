@@ -55,7 +55,6 @@ if MULTITHREAD:
         board = to_c_board(m)
 
         print_board(to_val(m))
-        print "Current approx. score:", sum(_to_score(c) for row in m for c in row)
 
         scores = pool.map(score_toplevel_move, [(board, move) for move in xrange(4)])
         bestmove, bestscore = max(enumerate(scores), key=lambda x:x[1])
@@ -88,7 +87,6 @@ def rungame(args):
     while 1:
         state = gamectrl.get_status()
         if state == 'ended':
-            print "Game over."
             break
         elif state == 'won':
             time.sleep(0.75)
@@ -99,8 +97,13 @@ def rungame(args):
         move = find_best_move(board)
         if move < 0:
             break
-        print "%010.6f: Move %d: %s" % (time.time() - start, moveno, movename(move))
+        print "%010.6f: Score %d, Move %d: %s" % (time.time() - start, gamectrl.get_score(), moveno, movename(move))
         gamectrl.execute_move(move)
+
+    score = gamectrl.get_score()
+    board = gamectrl.get_board()
+    maxval = max(max(row) for row in to_val(board))
+    print "Game over. Final score %d; highest tile %d." % (score, maxval)
 
 if __name__ == '__main__':
     import sys
