@@ -67,22 +67,19 @@ class Fast2048Control(Generic2048Control):
         # Obtain the GameManager instance by triggering a fake restart.
         self.ctrl.execute(
             '''
-            var _func_tmp = GameManager.prototype.setup;
-            GameManager.prototype.setup = function() {
+            var _func_tmp = GameManager.prototype.isGameTerminated;
+            GameManager.prototype.isGameTerminated = function() {
                 GameManager._instance = this;
+                return true;
             };
             ''')
 
         # 'R' for the official version
-        self.send_key_event('keydown', 82)
+        self.send_key_event('keydown', 38)
         time.sleep(0.1)
-        self.send_key_event('keyup', 82)
-        # Space for other versions
-        self.send_key_event('keydown', 32)
-        time.sleep(0.1)
-        self.send_key_event('keyup', 32)
+        self.send_key_event('keyup', 38)
 
-        self.execute('GameManager.prototype.setup = _func_tmp;')
+        self.execute('GameManager.prototype.isGameTerminated = _func_tmp;')
 
     def get_board(self):
         grid = self.execute('GameManager._instance.grid')
