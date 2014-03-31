@@ -11,7 +11,7 @@ Run `make`. Any relatively recent C++ compiler should be able to build the outpu
 You have a few options, depending on what you have installed.
 
 - Pure Cygwin: run `make`. The resulting DLL can *only* be used with Cygwin programs, so
-to run the browser control version, you must use the Cygwin Python (not the python.org Python).
+to run the browser control version, you must use the Cygwin Python (not the python.org Python). For step-by-step instructions, courtesy Tomas Szell (@matukaa), see [this document](https://github.com/nneonneo/2048-ai/wiki/CygwinStepByStep.pdf).
 - Cygwin with MinGW: run
 
         CXX=x86_64-w64-mingw32-g++ CXXFLAGS='-static-libstdc++ -static-libgcc -D_WINDLL -D_GNU_SOURCE=1' make
