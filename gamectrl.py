@@ -47,6 +47,15 @@ class Generic2048Control(object):
             else {"running"}
             ''')
 
+    def restart_game(self):
+        self.send_key_event('keydown', 82)
+        time.sleep(0.1)
+        self.send_key_event('keyup', 82)
+
+        self.send_key_event('keydown', 32)
+        time.sleep(0.1)
+        self.send_key_event('keyup', 32)
+
     def continue_game(self):
         ''' Continue the game. Only works if the game is in the 'won' state. '''
         self.execute('document.querySelector(".keep-playing-button").click();')
@@ -74,7 +83,7 @@ class Fast2048Control(Generic2048Control):
             };
             ''')
 
-        # 'R' for the official version
+        # Send an "up" event, which will trigger our replaced isGameTerminated function
         self.send_key_event('keydown', 38)
         time.sleep(0.1)
         self.send_key_event('keyup', 38)
