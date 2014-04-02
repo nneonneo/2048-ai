@@ -318,7 +318,7 @@ static float _score_toplevel_move(eval_state &state, board_t board, int move) {
 
     state.cprob_thresh = CPROB_THRESH_BASE;
 
-    return score_tilechoose_node(state, newboard, 1.0f);
+    return score_tilechoose_node(state, newboard, 1.0f) + 1e-6;
 }
 
 float score_toplevel_move(board_t board, int move) {
