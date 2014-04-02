@@ -269,7 +269,7 @@ static float score_tilechoose_node(eval_state &state, board_t board, float cprob
 /* don't recurse into a node with a cprob less than this threshold */
 #define CPROB_THRESH_BASE (0.0001f)
 #define CACHE_DEPTH_LIMIT 6
-#define SEARCH_DEPTH_LIMIT 7
+#define SEARCH_DEPTH_LIMIT 8
 
 static float score_move_node(eval_state &state, board_t board, float cprob) {
     if(cprob < state.cprob_thresh || state.curdepth >= SEARCH_DEPTH_LIMIT) {
