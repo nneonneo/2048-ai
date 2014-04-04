@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#include <map>
+#include <unordered_map>
 
 #include "2048.h"
 
@@ -151,8 +151,7 @@ static float line_heur_score_table[65536];
 static float row_score_table[65536];
 
 struct eval_state {
-    typedef std::map<board_t, float> trans_table_t;
-    trans_table_t trans_table; // transposition table, to cache previously-seen moves
+    std::unordered_map<board_t, float> trans_table; // transposition table, to cache previously-seen moves
     float cprob_thresh;
     int curdepth;
 
@@ -272,11 +271,9 @@ static float score_move_node(eval_state &state, board_t board, float cprob) {
         return score_heur_board(board);
     }
 
-    if(state.curdepth < CACHE_DEPTH_LIMIT) {
-        const eval_state::trans_table_t::iterator &i = state.trans_table.find(board);
-        if(i != state.trans_table.end()) {
-            return i->second;
-        }
+    if (state.curdepth < CACHE_DEPTH_LIMIT) {
+        auto it = state.trans_table.find(board);
+        if (it != state.trans_table.end()) return it->second;
     }
 
     int move;
