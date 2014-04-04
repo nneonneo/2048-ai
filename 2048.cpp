@@ -92,7 +92,7 @@ static const int MAX_SCORE_IDX = 3000; // actually ATM 2875 would be enough
 static uint16_t score_idx[65536]; // points to a value in score_table[]
 static int score_table[MAX_SCORE_IDX];
 
-void init_tables() {
+static void init_tables() {
     int score_cnt = 0;
     int heur_cnt = 0;
     for (unsigned row = 0; row < 65536; ++row) {
@@ -307,8 +307,8 @@ static float score_move_node(eval_state &state, board_t board, float cprob) {
     return best;
 }
 
-float score_toplevel_move(board_t board, int move) {
-    board_t newboard = execute_move(move, board);
+static float score_toplevel_move(board_t board, int move, board_t& newboard) {
+    newboard = execute_move(move, board);
     if (board == newboard) return 0.0f;
 
     eval_state state;
@@ -317,57 +317,19 @@ float score_toplevel_move(board_t board, int move) {
     return score_tilechoose_node(state, newboard, 1.0f);
 }
 
-/* Find the best move for a given board. */
-int find_best_move(board_t board) {
-    int move;
+// Execute the best move for a given board.
+static board_t do_best_move(board_t board) {
     float best = -1.0f;
-    int bestmove = -1;
-
-    print_board(board);
-
-    for(move=0; move<4; move++) {
-        float res = score_toplevel_move(board, move);
-
-        if(res > best) {
+    board_t bestmove = board;
+    for (int move = 0; move < 4; ++move) {
+        board_t newboard;
+        float res = score_toplevel_move(board, move, newboard);
+        if (res > best) {
             best = res;
-            bestmove = move;
+            bestmove = newboard;
         }
     }
-
     return bestmove;
-}
-
-int ask_for_move(board_t board) {
-    int move;
-    char validstr[5];
-    char *validpos = validstr;
-
-    print_board(board);
-
-    for(move=0; move<4; move++) {
-        if(execute_move(move, board) != board)
-            *validpos++ = "UDLR"[move];
-    }
-    *validpos = 0;
-    if(validpos == validstr)
-        return -1;
-
-    while(1) {
-        char movestr[64];
-        const char *allmoves = "UDLR";
-
-        printf("Move [%s]? ", validstr);
-
-        if(!fgets(movestr, sizeof(movestr)-1, stdin))
-            return -1;
-
-        if(!strchr(validstr, toupper(movestr[0]))) {
-            printf("Invalid move.\n");
-            continue;
-        }
-
-        return strchr(allmoves, toupper(movestr[0])) - allmoves;
-    }
 }
 
 static unsigned unif_random(unsigned n)
@@ -401,46 +363,28 @@ static board_t initial_board() {
     return insert_tile_rand(board, draw_tile());
 }
 
-void play_game(get_move_func_t get_move) {
+static void play_game() {
     board_t board = initial_board();
     int moveno = 0;
     int scorepenalty = 0; // "penalty" for obtaining free 4 tiles
 
-    while(1) {
-        int move;
-        board_t newboard;
+    while (true) {
+        printf("Move #%d, current score=%d\n", ++moveno, score_board(board) - scorepenalty);
+        print_board(board);
 
-        for(move = 0; move < 4; move++) {
-            if(execute_move(move, board) != board)
-                break;
-        }
-        if(move == 4)
-            break; // no legal moves
-
-        printf("\nMove #%d, current score=%d\n", ++moveno, score_board(board) - scorepenalty);
-
-        move = get_move(board);
-        if(move < 0)
-            break;
-
-        newboard = execute_move(move, board);
-        if(newboard == board) {
-            printf("Illegal move!\n");
-            moveno--;
-            continue;
-        }
+        board_t newboard = do_best_move(board);
+        if (newboard == board) break; // no more legal moves
 
         board_t tile = draw_tile();
         if (tile == 2) scorepenalty += 4;
         board = insert_tile_rand(newboard, tile);
     }
 
-    print_board(board);
-    printf("\nGame over. Your score is %d. The highest rank you achieved was %d.\n", score_board(board) - scorepenalty, get_max_rank(board));
+    printf("Game over. Your score is %d. The highest rank you achieved was %d.\n", score_board(board) - scorepenalty, get_max_rank(board));
 }
 
 int main() {
     srand(123); // fixed seed, for benchmarking we want the same sequence
     init_tables();
-    play_game(find_best_move);
+    play_game();
 }
