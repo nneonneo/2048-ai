@@ -154,13 +154,9 @@ struct eval_state {
     typedef std::map<board_t, float> trans_table_t;
     trans_table_t trans_table; // transposition table, to cache previously-seen moves
     float cprob_thresh;
-    int maxdepth;
     int curdepth;
-    int cachehits;
-    int moves_evaled;
 
-    eval_state() : cprob_thresh(0), maxdepth(0), curdepth(0), cachehits(0), moves_evaled(0) {
-    }
+    eval_state() : cprob_thresh(0), curdepth(0) {}
 };
 
 // score a single board heuristically
@@ -273,15 +269,12 @@ static float score_tilechoose_node(eval_state &state, board_t board, float cprob
 
 static float score_move_node(eval_state &state, board_t board, float cprob) {
     if(cprob < state.cprob_thresh || state.curdepth >= SEARCH_DEPTH_LIMIT) {
-        if(state.curdepth > state.maxdepth)
-            state.maxdepth = state.curdepth;
         return score_heur_board(board);
     }
 
     if(state.curdepth < CACHE_DEPTH_LIMIT) {
         const eval_state::trans_table_t::iterator &i = state.trans_table.find(board);
         if(i != state.trans_table.end()) {
-            state.cachehits++;
             return i->second;
         }
     }
@@ -292,9 +285,7 @@ static float score_move_node(eval_state &state, board_t board, float cprob) {
     state.curdepth++;
     for(move=0; move<4; move++) {
         board_t newboard = execute_move(move, board);
-        state.moves_evaled++;
-        if(board == newboard)
-            continue;
+        if (board == newboard) continue;
 
         float res = score_tilechoose_node(state, newboard, cprob);
         if(res > best)
@@ -309,35 +300,14 @@ static float score_move_node(eval_state &state, board_t board, float cprob) {
     return best;
 }
 
-static float _score_toplevel_move(eval_state &state, board_t board, int move) {
-    //int maxrank = get_max_rank(board);
+float score_toplevel_move(board_t board, int move) {
     board_t newboard = execute_move(move, board);
+    if (board == newboard) return 0.0f;
 
-    if(board == newboard)
-        return 0;
-
+    eval_state state;
     state.cprob_thresh = CPROB_THRESH_BASE;
 
-    return score_tilechoose_node(state, newboard, 1.0f) + 1e-6;
-}
-
-float score_toplevel_move(board_t board, int move) {
-    float res;
-    struct timeval start, finish;
-    double elapsed;
-    eval_state state;
-
-    gettimeofday(&start, NULL);
-    res = _score_toplevel_move(state, board, move);
-    gettimeofday(&finish, NULL);
-
-    elapsed = (finish.tv_sec - start.tv_sec);
-    elapsed += (finish.tv_usec - start.tv_usec) / 1000000.0;
-
-    printf("Move %d: result %f: eval'd %d moves (%d cache hits, %zd cache size) in %.2f seconds (maxdepth=%d)\n", move, res,
-        state.moves_evaled, state.cachehits, state.trans_table.size(), elapsed, state.maxdepth);
-
-    return res;
+    return score_tilechoose_node(state, newboard, 1.0f) + 1e-6f;
 }
 
 /* Find the best move for a given board. */
@@ -347,7 +317,6 @@ int find_best_move(board_t board) {
     int bestmove = -1;
 
     print_board(board);
-    printf("Current scores: heur %.0f, actual %.0f\n", score_heur_board(board), score_board(board));
 
     for(move=0; move<4; move++) {
         float res = score_toplevel_move(board, move);
