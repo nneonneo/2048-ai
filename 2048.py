@@ -17,8 +17,7 @@ else:
     print "Couldn't load 2048 library bin/2048.{so,dll,dylib}! Make sure to build it first."
     exit()
 
-ailib.init_move_tables()
-ailib.init_score_tables()
+ailib.init_tables()
 
 ailib.find_best_move.argtypes = [ctypes.c_uint64]
 ailib.score_toplevel_move.argtypes = [ctypes.c_uint64, ctypes.c_int]

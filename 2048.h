@@ -44,8 +44,7 @@ static inline row_t reverse_row(row_t row) {
 extern "C" {
 #endif
 
-DLL_PUBLIC void init_score_tables(void);
-DLL_PUBLIC void init_move_tables(void);
+DLL_PUBLIC void init_tables();
 
 typedef int (*get_move_func_t)(board_t);
 DLL_PUBLIC float score_toplevel_move(board_t board, int move);

@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <algorithm>
 
 #include "2048.h"
 
@@ -64,38 +65,79 @@ static row_t row_left_table [65536];
 static row_t row_right_table[65536];
 static board_t col_up_table[65536];
 static board_t col_down_table[65536];
+static float heur_score_table[65536];
+static float score_table[65536];
 
-void init_move_tables() {
+void init_tables() {
     for (unsigned row = 0; row < 65536; ++row) {
-        unsigned int line[4] = {row & 0xf, (row >> 4) & 0xf, (row >> 8) & 0xf, (row >> 12) & 0xf};
-        row_t result;
-        int i, j;
+        unsigned line[4] = {
+                (row >>  0) & 0xf,
+                (row >>  4) & 0xf,
+                (row >>  8) & 0xf,
+                (row >> 12) & 0xf
+        };
 
-        /* execute a move to the left */
-        for(i=0; i<3; i++) {
-            for(j=i+1; j<4; j++) {
-                if(line[j] != 0)
-                    break;
+        float heur_score = 0.0f;
+        float score = 0.0f;
+        for (int i = 0; i < 4; ++i) {
+            int rank = line[i];
+            if (rank == 0) {
+                heur_score += 10000.0f;
+            } else if (rank >= 2) {
+                // the score is the total sum of the tile and all intermediate merged tiles
+                score += (rank - 1) * (1 << rank);
             }
-            if(j == 4)
-                break; // no more tiles to the right
+        }
+        score_table[row] = score;
 
-            if(line[i] == 0) {
+        int maxi = 0;
+        for (int i = 1; i < 4; ++i) {
+            if (line[i] > line[maxi]) maxi = i;
+        }
+
+        if (maxi == 0 || maxi == 3) heur_score += 20000.0f;
+
+        // Check if maxi's are close to each other, and of diff ranks (eg 128 256)
+        for (int i = 1; i < 4; ++i) {
+            if ((line[i] == line[i - 1] + 1) || (line[i] == line[i - 1] - 1)) heur_score += 1000.0f;
+        }
+
+        // Check if the values are ordered:
+        if ((line[0] < line[1]) && (line[1] < line[2]) && (line[2] < line[3])) heur_score += 10000.0f;
+        if ((line[0] > line[1]) && (line[1] > line[2]) && (line[2] > line[3])) heur_score += 10000.0f;
+
+        heur_score_table[row] = heur_score;
+
+
+        // execute a move to the left
+        for (int i = 0; i < 3; ++i) {
+            int j;
+            for (j = i + 1; j < 4; ++j) {
+                if (line[j] != 0) break;
+            }
+            if (j == 4) break; // no more tiles to the right
+
+            if (line[i] == 0) {
                 line[i] = line[j];
                 line[j] = 0;
                 i--; // retry this entry
-            } else if(line[i] == line[j] && line[i] != 0xf) {
+            } else if (line[i] == line[j] && line[i] != 0xf) {
                 line[i]++;
                 line[j] = 0;
             }
         }
 
-        result = (line[0]) | (line[1] << 4) | (line[2] << 8) | (line[3] << 12);
+        row_t result = (line[0] <<  0) |
+                       (line[1] <<  4) |
+                       (line[2] <<  8) |
+                       (line[3] << 12);
+        row_t rev_result = reverse_row(result);
+        unsigned rev_row = reverse_row(row);
 
-        row_left_table[row] = row ^ result;
-        row_right_table[reverse_row(row)] = reverse_row(row) ^ reverse_row(result);
-        col_up_table[row] = unpack_col(row) ^ unpack_col(result);
-        col_down_table[reverse_row(row)] = unpack_col(reverse_row(row)) ^ unpack_col(reverse_row(result));
+        row_left_table [    row] =                row  ^                result;
+        row_right_table[rev_row] =            rev_row  ^            rev_result;
+        col_up_table   [    row] = unpack_col(    row) ^ unpack_col(    result);
+        col_down_table [rev_row] = unpack_col(rev_row) ^ unpack_col(rev_result);
     }
 }
 
@@ -164,8 +206,6 @@ static inline int get_max_rank(board_t board) {
 }
 
 /* Optimizing the game */
-static float line_heur_score_table[65536];
-static float row_score_table[65536];
 
 struct eval_state {
     trans_table_t trans_table; // transposition table, to cache previously-seen moves
@@ -188,53 +228,6 @@ static float score_move_node(eval_state &state, board_t board, float cprob);
 // score over all possible tile choices and placements
 static float score_tilechoose_node(eval_state &state, board_t board, float cprob);
 
-void init_score_tables() {
-    for (unsigned row = 0; row < 65536; ++row) {
-        unsigned int line[4] = {row & 0xf, (row >> 4) & 0xf, (row >> 8) & 0xf, (row >> 12) & 0xf};
-        int i;
-        float heur_score = 0;
-        float score = 0;
-
-        for(i=0; i<4; i++) {
-            int rank = line[i];
-
-            if(rank == 0) {
-                heur_score += 10000;
-            } else if(rank >= 2) {
-                // the score is the total sum of the tile and all intermediate merged tiles
-                score += (rank - 1) * (1 << rank);
-            }
-        }
-
-        int maxi = 0;
-        int maxrank = 0;
-        for(i=0; i<4; i++) {
-            int rank = line[i];
-
-            if(rank > maxrank) {
-                maxrank = rank;
-                maxi = i;
-            }
-        }
-
-        if(maxi == 0 || maxi == 3)
-            heur_score += 20000;
-
-        // Check if maxis are close to eachother, and of diff ranks (eg 128 256)
-        for(i=1; i<4; i++) {
-            if ((line[i] == line[i-1] + 1) || (line[i] == line[i-1] - 1)) {
-                heur_score += 1000;
-            }
-        }
-
-        // Check if the values are ordered:
-        if ((line[0] < line[1]) && (line[1] < line[2]) && (line[2] < line[3])) heur_score += 10000;
-        if ((line[0] > line[1]) && (line[1] > line[2]) && (line[2] > line[3])) heur_score += 10000;
-
-        row_score_table[row] = score;
-        line_heur_score_table[row] = heur_score;
-    }
-}
 
 static float score_helper(board_t board, const float* table) {
     return table[(board >>  0) & ROW_MASK] +
@@ -244,13 +237,13 @@ static float score_helper(board_t board, const float* table) {
 }
 
 static float score_heur_board(board_t board) {
-    return score_helper(          board , line_heur_score_table) +
-           score_helper(transpose(board), line_heur_score_table) +
+    return score_helper(          board , heur_score_table) +
+           score_helper(transpose(board), heur_score_table) +
            100000.0f;
 }
 
 static float score_board(board_t board) {
-    return score_helper(board, row_score_table);
+    return score_helper(board, score_table);
 }
 
 static float score_tilechoose_node(eval_state &state, board_t board, float cprob) {
@@ -461,13 +454,7 @@ void play_game(get_move_func_t get_move) {
     printf("\nGame over. Your score is %.0f. The highest rank you achieved was %d.\n", score_board(board) - scorepenalty, get_max_rank(board));
 }
 
-int main(int argc, char **argv) {
-    (void)argc;
-    (void)argv;
-
-    init_move_tables();
-    init_score_tables();
-
+int main() {
+    init_tables();
     play_game(find_best_move);
-    return 0;
 }
