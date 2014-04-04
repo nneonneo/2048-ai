@@ -1,5 +1,4 @@
 #include <ctype.h>
-#include <math.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -215,7 +214,7 @@ void init_score_tables(void) {
                 heur_score += 10000;
             } else if(rank >= 2) {
                 // the score is the total sum of the tile and all intermediate merged tiles
-                score += (rank-1) * powf(2, rank);
+                score += (rank - 1) * (1 << rank);
             }
         }
 
