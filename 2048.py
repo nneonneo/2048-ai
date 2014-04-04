@@ -8,8 +8,7 @@ import os
 MULTITHREAD = True
 
 ailib = ctypes.CDLL('bin/2048.so')
-ailib.init_move_tables()
-ailib.init_score_tables()
+ailib.init_tables()
 
 ailib.find_best_move.argtypes = [ctypes.c_uint64]
 ailib.score_toplevel_move.argtypes = [ctypes.c_uint64, ctypes.c_int]
