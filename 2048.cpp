@@ -288,13 +288,16 @@ static float score_move_node(eval_state &state, board_t board, float cprob) {
     }
 
     float best = 0.0f;
+
     state.curdepth++;
-    for (int move = 0; move < 4; ++move) {
-        board_t newboard = execute_move(move, board);
-        if (board != newboard) {
-            best = std::max(best, score_tilechoose_node(state, newboard, cprob));
-        }
-    }
+    board_t up    = execute_move_up   (board);
+    if (board != up   ) best = std::max(best, score_tilechoose_node(state, up,    cprob));
+    board_t down  = execute_move_down (board);
+    if (board != down ) best = std::max(best, score_tilechoose_node(state, down,  cprob));
+    board_t left  = execute_move_left (board);
+    if (board != left ) best = std::max(best, score_tilechoose_node(state, left,  cprob));
+    board_t right = execute_move_right(board);
+    if (board != right) best = std::max(best, score_tilechoose_node(state, right, cprob));
     state.curdepth--;
 
     if (state.curdepth < CACHE_DEPTH_LIMIT) {
