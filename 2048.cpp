@@ -65,15 +65,8 @@ static board_t row_right_table[65536];
 static board_t col_up_table[65536];
 static board_t col_down_table[65536];
 
-void init_move_tables(void) {
-    unsigned row;
-
-    memset(row_left_table, 0, sizeof(row_left_table));
-    memset(row_right_table, 0, sizeof(row_right_table));
-    memset(col_up_table, 0, sizeof(col_up_table));
-    memset(col_down_table, 0, sizeof(col_down_table));
-
-    for(row = 0; row < 65536; row++) {
+void init_move_tables() {
+    for (unsigned row = 0; row < 65536; ++row) {
         unsigned int line[4] = {row & 0xf, (row >> 4) & 0xf, (row >> 8) & 0xf, (row >> 12) & 0xf};
         row_t result;
         int i, j;
@@ -195,13 +188,8 @@ static float score_move_node(eval_state &state, board_t board, float cprob);
 // score over all possible tile choices and placements
 static float score_tilechoose_node(eval_state &state, board_t board, float cprob);
 
-void init_score_tables(void) {
-    unsigned row;
-
-    memset(line_heur_score_table, 0, sizeof(line_heur_score_table));
-    memset(row_score_table, 0, sizeof(row_score_table));
-
-    for(row = 0; row < 65536; row++) {
+void init_score_tables() {
+    for (unsigned row = 0; row < 65536; ++row) {
         unsigned int line[4] = {row & 0xf, (row >> 4) & 0xf, (row >> 8) & 0xf, (row >> 12) & 0xf};
         int i;
         float heur_score = 0;
