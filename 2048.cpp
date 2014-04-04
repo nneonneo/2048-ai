@@ -26,6 +26,31 @@ static inline board_t transpose(board_t x)
 	return b1 | (b2 >> 24) | (b3 << 24);
 }
 
+// Reverse the rows in a board:
+//   0123       3210
+//   4567  -->  7654
+//   89ab       ba98
+//   cdef       fedc
+static inline board_t reverse_rows(board_t board) {
+    return ((board & 0xF000F000F000F000ULL) >> 12) |
+           ((board & 0x0F000F000F000F00ULL) >>  4) |
+           ((board & 0x00F000F000F000F0ULL) <<  4) |
+           ((board & 0x000F000F000F000FULL) << 12);
+}
+
+// Reverse the columns in a board:
+//   0123       cdef
+//   4567  -->  89ab
+//   89ab       4567
+//   cdef       0123
+static board_t reverse_cols(board_t board)
+{
+    return ((board                        ) >> 48) |
+           ((board & 0x0000FFFF00000000ULL) >> 16) |
+           ((board & 0x00000000FFFF0000ULL) << 16) |
+           ((board                        ) << 48);
+}
+
 // Count the number of empty positions (= zero nibbles) in a board.
 // Precondition: the board cannot be fully empty.
 static int count_empty(uint64_t x)
@@ -44,16 +69,10 @@ static int count_empty(uint64_t x)
 	return x & 0xf;
 }
 
-/* We can perform state lookups one row at a time by using arrays with 65536 entries. */
-
-/* Move tables. Each row or compressed column is mapped to (oldrow^newrow) assuming row/col 0.
- *
- * Thus, the value is 0 if there is no move, and otherwise equals a value that can easily be
- * xor'ed into the current board state to update the board. */
-static row_t row_left_table [65536];
-static row_t row_right_table[65536];
-static board_t col_up_table[65536];
-static board_t col_down_table[65536];
+// Move left table. Each row is mapped to (oldrow ^ newrow). Thus, the value is
+// 0 if there is no move, and otherwise equals a value that can easily be
+// xor'ed into the current board state to update the board.
+static row_t move_left_table[65536];
 static float heur_score_table[65536];
 static int score_table[65536];
 
@@ -120,67 +139,40 @@ void init_tables() {
                        (line[1] <<  4) |
                        (line[2] <<  8) |
                        (line[3] << 12);
-        row_t rev_result = reverse_row(result);
-        unsigned rev_row = reverse_row(row);
-
-        row_left_table [    row] =                row  ^                result;
-        row_right_table[rev_row] =            rev_row  ^            rev_result;
-        col_up_table   [    row] = unpack_col(    row) ^ unpack_col(    result);
-        col_down_table [rev_row] = unpack_col(rev_row) ^ unpack_col(rev_result);
+        move_left_table[row] = row ^ result;
     }
 }
 
-static inline board_t execute_move_0(board_t board) {
+static board_t execute_move_left(board_t board) {
     board_t ret = board;
-    board_t t = transpose(board);
-    ret ^= col_up_table[(t >>  0) & ROW_MASK] <<  0;
-    ret ^= col_up_table[(t >> 16) & ROW_MASK] <<  4;
-    ret ^= col_up_table[(t >> 32) & ROW_MASK] <<  8;
-    ret ^= col_up_table[(t >> 48) & ROW_MASK] << 12;
+    ret ^= board_t(move_left_table[(board >>  0) & ROW_MASK]) <<  0;
+    ret ^= board_t(move_left_table[(board >> 16) & ROW_MASK]) << 16;
+    ret ^= board_t(move_left_table[(board >> 32) & ROW_MASK]) << 32;
+    ret ^= board_t(move_left_table[(board >> 48) & ROW_MASK]) << 48;
     return ret;
 }
-
-static inline board_t execute_move_1(board_t board) {
-    board_t ret = board;
-    board_t t = transpose(board);
-    ret ^= col_down_table[(t >>  0) & ROW_MASK] <<  0;
-    ret ^= col_down_table[(t >> 16) & ROW_MASK] <<  4;
-    ret ^= col_down_table[(t >> 32) & ROW_MASK] <<  8;
-    ret ^= col_down_table[(t >> 48) & ROW_MASK] << 12;
-    return ret;
+static board_t execute_move_right(board_t board) {
+    return reverse_rows(execute_move_left(reverse_rows(board)));
+}
+static board_t execute_move_up(board_t board) {
+    return transpose(execute_move_left(transpose(board)));
+}
+static board_t execute_move_down(board_t board) {
+    // transpose(reverse_rows(..)) is equivalent to reverse_cols(transpose(..))
+    // but the latter generates faster code. And similarly
+    // reverse_rows(transpose(..)) is equivalent to transpose(reverse_cols(..))
+    //return transpose(execute_move_right(transpose(board)));
+    //return transpose(reverse_rows(execute_move_left(reverse_rows(transpose(board)))));
+    return reverse_cols(transpose(execute_move_left(transpose(reverse_cols(board)))));
 }
 
-static inline board_t execute_move_2(board_t board) {
-    board_t ret = board;
-    ret ^= board_t(row_left_table[(board >>  0) & ROW_MASK]) <<  0;
-    ret ^= board_t(row_left_table[(board >> 16) & ROW_MASK]) << 16;
-    ret ^= board_t(row_left_table[(board >> 32) & ROW_MASK]) << 32;
-    ret ^= board_t(row_left_table[(board >> 48) & ROW_MASK]) << 48;
-    return ret;
-}
-
-static inline board_t execute_move_3(board_t board) {
-    board_t ret = board;
-    ret ^= board_t(row_right_table[(board >>  0) & ROW_MASK]) <<  0;
-    ret ^= board_t(row_right_table[(board >> 16) & ROW_MASK]) << 16;
-    ret ^= board_t(row_right_table[(board >> 32) & ROW_MASK]) << 32;
-    ret ^= board_t(row_right_table[(board >> 48) & ROW_MASK]) << 48;
-    return ret;
-}
-
-/* Execute a move. */
 static inline board_t execute_move(int move, board_t board) {
-    switch(move) {
-    case 0: // up
-        return execute_move_0(board);
-    case 1: // down
-        return execute_move_1(board);
-    case 2: // left
-        return execute_move_2(board);
-    case 3: // right
-        return execute_move_3(board);
-    default:
-        return ~0ULL;
+    switch (move) {
+    case 0: return execute_move_up   (board);
+    case 1: return execute_move_down (board);
+    case 2: return execute_move_left (board);
+    case 3: return execute_move_right(board);
+    default: return ~0ULL;
     }
 }
 
