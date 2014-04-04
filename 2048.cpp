@@ -8,7 +8,32 @@
 #include <unordered_map>
 #include <cassert>
 
-#include "2048.h"
+/* The fundamental trick: the 4x4 board is represented as a 64-bit word,
+ * with each board square packed into a single 4-bit nibble.
+ *
+ * The maximum possible board value that can be supported is 32768 (2^15), but
+ * this is a minor limitation as achieving 65536 is highly unlikely under normal circumstances.
+ *
+ * The space and computation savings from using this representation should be significant.
+ *
+ * The nibble shift can be computed as (r,c) -> shift (4*r + c). That is, (0,0) is the LSB.
+ */
+
+typedef uint64_t board_t;
+typedef uint16_t row_t;
+
+static const board_t ROW_MASK = 0xFFFFULL;
+
+static void print_board(board_t board) {
+    for (int i = 0; i < 4; ++i) {
+        for (int j = 0; j < 4; ++j) {
+            putchar("0123456789abcdef"[board & 0xf]);
+            board >>= 4;
+        }
+        putchar('\n');
+    }
+    putchar('\n');
+}
 
 // Transpose rows/columns in a board:
 //   0123       048c
@@ -216,24 +241,6 @@ static inline int get_max_rank(board_t board) {
     return maxrank;
 }
 
-/* Optimizing the game */
-
-struct eval_state {
-    std::unordered_map<board_t, float> trans_table; // transposition table, to cache previously-seen moves
-    float cprob_thresh;
-    int curdepth;
-};
-
-// score a single board heuristically
-static float score_heur_board(board_t board);
-// score a single board actually (adding in the score from spawned 4 tiles)
-static int score_board(board_t board);
-// score over all possible moves
-static float score_move_node(eval_state &state, board_t board, float cprob);
-// score over all possible tile choices and placements
-static float score_tilechoose_node(eval_state &state, board_t board, float cprob);
-
-
 static float score_helper(board_t board) {
     return heur_scores[heur_idx[(board >>  0) & ROW_MASK]] +
            heur_scores[heur_idx[(board >> 16) & ROW_MASK]] +
@@ -241,10 +248,12 @@ static float score_helper(board_t board) {
            heur_scores[heur_idx[(board >> 48) & ROW_MASK]];
 }
 
+// score a single board heuristically
 static float score_heur_board(board_t board) {
     return score_helper(board) + score_helper(transpose(board));
 }
 
+// score a single board actually (adding in the score from spawned 4 tiles)
 static int score_board(board_t board) {
     return score_table[score_idx[(board >>  0) & ROW_MASK]] +
            score_table[score_idx[(board >> 16) & ROW_MASK]] +
@@ -252,7 +261,16 @@ static int score_board(board_t board) {
            score_table[score_idx[(board >> 48) & ROW_MASK]];
 }
 
-static float score_tilechoose_node(eval_state &state, board_t board, float cprob) {
+struct eval_state {
+    std::unordered_map<board_t, float> trans_table; // transposition table, to cache previously-seen moves
+    float cprob_thresh;
+    int curdepth;
+};
+
+static float score_move_node(eval_state& state, board_t board, float cprob);
+
+// score over all possible tile choices and placements
+static float score_tilechoose_node(eval_state& state, board_t board, float cprob) {
     int num_open = count_empty(board);
     cprob /= num_open;
 
@@ -277,7 +295,8 @@ static const float CPROB_THRESH_BASE = 0.0001f;
 static const int CACHE_DEPTH_LIMIT  = 6;
 static const int SEARCH_DEPTH_LIMIT = 8;
 
-static float score_move_node(eval_state &state, board_t board, float cprob) {
+// score over all possible moves
+static float score_move_node(eval_state& state, board_t board, float cprob) {
     if (cprob < state.cprob_thresh || state.curdepth >= SEARCH_DEPTH_LIMIT) {
         return score_heur_board(board);
     }
