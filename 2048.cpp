@@ -372,11 +372,6 @@ static board_t insert_tile_rand(board_t board, int tile) {
             num_open++;
     }
 
-    if(num_open == 0) {
-        printf("insert_tile_rand: no open spots!\n");
-        return board;
-    }
-
     int index = unif_random(num_open);
     for(int i=0; i<16; i++) {
         if(((board >> (4*i)) & 0xf) != 0)
@@ -390,18 +385,11 @@ static board_t insert_tile_rand(board_t board, int tile) {
 
     return board;
 }
-        
+
 static board_t initial_board() {
-    board_t board = 0;
-
-    /* Draw initial values */
-    for(int i=0; i<2; i++) {
-        board = insert_tile_rand(board, draw_tile());
-    }
-
-    return board;
+    board_t board = board_t(draw_tile()) << (4 * unif_random(16));
+    return insert_tile_rand(board, draw_tile());
 }
-
 
 void play_game(get_move_func_t get_move) {
     board_t board = initial_board();
