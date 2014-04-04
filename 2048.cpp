@@ -60,8 +60,8 @@ static int count_empty(uint64_t x)
  *
  * Thus, the value is 0 if there is no move, and otherwise equals a value that can easily be
  * xor'ed into the current board state to update the board. */
-static board_t row_left_table[65536];
-static board_t row_right_table[65536];
+static row_t row_left_table [65536];
+static row_t row_right_table[65536];
 static board_t col_up_table[65536];
 static board_t col_down_table[65536];
 
@@ -121,19 +121,19 @@ static inline board_t execute_move_1(board_t board) {
 
 static inline board_t execute_move_2(board_t board) {
     board_t ret = board;
-    ret ^= row_left_table[(board >>  0) & ROW_MASK] <<  0;
-    ret ^= row_left_table[(board >> 16) & ROW_MASK] << 16;
-    ret ^= row_left_table[(board >> 32) & ROW_MASK] << 32;
-    ret ^= row_left_table[(board >> 48) & ROW_MASK] << 48;
+    ret ^= board_t(row_left_table[(board >>  0) & ROW_MASK]) <<  0;
+    ret ^= board_t(row_left_table[(board >> 16) & ROW_MASK]) << 16;
+    ret ^= board_t(row_left_table[(board >> 32) & ROW_MASK]) << 32;
+    ret ^= board_t(row_left_table[(board >> 48) & ROW_MASK]) << 48;
     return ret;
 }
 
 static inline board_t execute_move_3(board_t board) {
     board_t ret = board;
-    ret ^= row_right_table[(board >>  0) & ROW_MASK] <<  0;
-    ret ^= row_right_table[(board >> 16) & ROW_MASK] << 16;
-    ret ^= row_right_table[(board >> 32) & ROW_MASK] << 32;
-    ret ^= row_right_table[(board >> 48) & ROW_MASK] << 48;
+    ret ^= board_t(row_right_table[(board >>  0) & ROW_MASK]) <<  0;
+    ret ^= board_t(row_right_table[(board >> 16) & ROW_MASK]) << 16;
+    ret ^= board_t(row_right_table[(board >> 32) & ROW_MASK]) << 32;
+    ret ^= board_t(row_right_table[(board >> 48) & ROW_MASK]) << 48;
     return ret;
 }
 
