@@ -15,8 +15,8 @@
 typedef uint64_t board_t;
 typedef uint16_t row_t;
 
-#define ROW_MASK 0xFFFFULL
-#define COL_MASK 0x000F000F000F000FULL
+static const board_t ROW_MASK = 0xFFFFULL;
+static const board_t COL_MASK = 0x000F000F000F000FULL;
 
 static inline void print_board(board_t board) {
     int i,j;

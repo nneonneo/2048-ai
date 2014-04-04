@@ -61,64 +61,41 @@ void init_move_tables(void) {
     }
 }
 
-#define DO_LINE(tbl,i,lookup,xv) do { \
-        tmp = tbl[lookup]; \
-        ret ^= xv; \
-    } while(0)
-
-#define DO_ROW(tbl,i) DO_LINE(tbl,i, (board >> (16*i)) & ROW_MASK,          tmp << (16*i))
-#define DO_COL(tbl,i) DO_LINE(tbl,i, pack_col((board >> (4*i)) & COL_MASK), tmp << (4*i))
-
 static inline board_t execute_move_0(board_t board) {
-    board_t tmp;
     board_t ret = board;
-
-    DO_COL(col_up_table, 0);
-    DO_COL(col_up_table, 1);
-    DO_COL(col_up_table, 2);
-    DO_COL(col_up_table, 3);
-
+    ret ^= col_up_table[pack_col((board >>  0) & COL_MASK)] <<  0;
+    ret ^= col_up_table[pack_col((board >>  4) & COL_MASK)] <<  4;
+    ret ^= col_up_table[pack_col((board >>  8) & COL_MASK)] <<  8;
+    ret ^= col_up_table[pack_col((board >> 12) & COL_MASK)] << 12;
     return ret;
 }
 
 static inline board_t execute_move_1(board_t board) {
-    board_t tmp;
     board_t ret = board;
-
-    DO_COL(col_down_table, 0);
-    DO_COL(col_down_table, 1);
-    DO_COL(col_down_table, 2);
-    DO_COL(col_down_table, 3);
-
+    ret ^= col_down_table[pack_col((board >>  0) & COL_MASK)] <<  0;
+    ret ^= col_down_table[pack_col((board >>  4) & COL_MASK)] <<  4;
+    ret ^= col_down_table[pack_col((board >>  8) & COL_MASK)] <<  8;
+    ret ^= col_down_table[pack_col((board >> 12) & COL_MASK)] << 12;
     return ret;
 }
 
 static inline board_t execute_move_2(board_t board) {
-    board_t tmp;
     board_t ret = board;
-
-    DO_ROW(row_left_table, 0);
-    DO_ROW(row_left_table, 1);
-    DO_ROW(row_left_table, 2);
-    DO_ROW(row_left_table, 3);
-
+    ret ^= row_left_table[(board >>  0) & ROW_MASK] <<  0;
+    ret ^= row_left_table[(board >> 16) & ROW_MASK] << 16;
+    ret ^= row_left_table[(board >> 32) & ROW_MASK] << 32;
+    ret ^= row_left_table[(board >> 48) & ROW_MASK] << 48;
     return ret;
 }
 
 static inline board_t execute_move_3(board_t board) {
-    board_t tmp;
     board_t ret = board;
-
-    DO_ROW(row_right_table, 0);
-    DO_ROW(row_right_table, 1);
-    DO_ROW(row_right_table, 2);
-    DO_ROW(row_right_table, 3);
-
+    ret ^= row_right_table[(board >>  0) & ROW_MASK] <<  0;
+    ret ^= row_right_table[(board >> 16) & ROW_MASK] << 16;
+    ret ^= row_right_table[(board >> 32) & ROW_MASK] << 32;
+    ret ^= row_right_table[(board >> 48) & ROW_MASK] << 48;
     return ret;
 }
-#undef DO_ROW
-#undef DO_COL
-#undef DO_LINE
 
 /* Execute a move. */
 static inline board_t execute_move(int move, board_t board) {
@@ -220,22 +197,28 @@ void init_score_tables(void) {
     }
 }
 
-#define SCORE_BOARD(board,tbl) ((tbl)[(board) & ROW_MASK] + \
-    (tbl)[((board) >> 16) & ROW_MASK] + \
-    (tbl)[((board) >> 32) & ROW_MASK] + \
-    (tbl)[((board) >> 48) & ROW_MASK])
+static float score_helper(board_t board, const float* table) {
+    return table[(board >>  0) & ROW_MASK] +
+           table[(board >> 16) & ROW_MASK] +
+           table[(board >> 32) & ROW_MASK] +
+           table[(board >> 48) & ROW_MASK];
+}
 
-#define SCORE_COL_BOARD(board,tbl) ((tbl)[pack_col((board) & COL_MASK)] + \
-    (tbl)[pack_col(((board) >> 4) & COL_MASK)] + \
-    (tbl)[pack_col(((board) >> 8) & COL_MASK)] + \
-    (tbl)[pack_col(((board) >> 12) & COL_MASK)])
+static float score_col_helper(board_t board, const float* table) {
+    return table[pack_col((board >>  0) & COL_MASK)] +
+           table[pack_col((board >>  4) & COL_MASK)] +
+           table[pack_col((board >>  8) & COL_MASK)] +
+           table[pack_col((board >> 12) & COL_MASK)];
+}
 
 static float score_heur_board(board_t board) {
-    return SCORE_BOARD(board, line_heur_score_table) + SCORE_COL_BOARD(board, line_heur_score_table) + 100000;
+    return score_helper    (board, line_heur_score_table) +
+           score_col_helper(board, line_heur_score_table) +
+           100000;
 }
 
 static float score_board(board_t board) {
-    return SCORE_BOARD(board, row_score_table);
+    return score_helper(board, row_score_table);
 }
 
 static float score_tilechoose_node(eval_state &state, board_t board, float cprob) {
@@ -259,12 +242,12 @@ static float score_tilechoose_node(eval_state &state, board_t board, float cprob
     return res / num_open;
 }
 
-/* Statistics and controls */
+// Statistics and controls
 // cprob: cumulative probability
-/* don't recurse into a node with a cprob less than this threshold */
-#define CPROB_THRESH_BASE (0.0001f)
-#define CACHE_DEPTH_LIMIT 6
-#define SEARCH_DEPTH_LIMIT 8
+// don't recurse into a node with a cprob less than this threshold
+static const float CPROB_THRESH_BASE = 0.0001f;
+static const int CACHE_DEPTH_LIMIT  = 6;
+static const int SEARCH_DEPTH_LIMIT = 8;
 
 static float score_move_node(eval_state &state, board_t board, float cprob) {
     if(cprob < state.cprob_thresh || state.curdepth >= SEARCH_DEPTH_LIMIT) {
