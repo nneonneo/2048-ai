@@ -372,27 +372,28 @@ static unsigned unif_random(unsigned n)
 }
 
 /* Playing the game */
-static int draw_tile() {
+static board_t draw_tile() {
     return (unif_random(10) < 9) ? 1 : 2;
 }
 
-static board_t insert_tile_rand(board_t board, int tile) {
+static board_t insert_tile_rand(board_t board, board_t tile) {
     int index = unif_random(count_empty(board));
-    for(int i=0; i<16; i++) {
-        if(((board >> (4*i)) & 0xf) != 0)
-            continue;
-        if(index == 0) {
-            board |= ((board_t)tile) << (4*i);
-            break;
+    board_t tmp = board;
+    while (true) {
+        while ((tmp & 0xf) != 0) {
+            tmp >>= 4;
+            tile <<= 4;
         }
-        index--;
+        if (index == 0) break;
+        --index;
+        tmp >>= 4;
+        tile <<= 4;
     }
-
-    return board;
+    return board | tile;
 }
 
 static board_t initial_board() {
-    board_t board = board_t(draw_tile()) << (4 * unif_random(16));
+    board_t board = draw_tile() << (4 * unif_random(16));
     return insert_tile_rand(board, draw_tile());
 }
 
@@ -425,9 +426,8 @@ void play_game(get_move_func_t get_move) {
             continue;
         }
 
-        int tile = draw_tile();
-        if(tile == 2)
-            scorepenalty += 4;
+        board_t tile = draw_tile();
+        if (tile == 2) scorepenalty += 4;
         board = insert_tile_rand(newboard, tile);
     }
 
