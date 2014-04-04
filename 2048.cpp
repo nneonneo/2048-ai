@@ -20,6 +20,23 @@
     typedef std::map<board_t, float> trans_table_t;
 #endif
 
+// Transpose rows/columns in a board:
+//   0123       048c
+//   4567  -->  159d
+//   89ab       26ae
+//   cdef       37bf
+static inline board_t transpose(board_t x)
+{
+	board_t a1 = x & 0xF0F00F0FF0F00F0FULL;
+	board_t a2 = x & 0x0000F0F00000F0F0ULL;
+	board_t a3 = x & 0x0F0F00000F0F0000ULL;
+	board_t a = a1 | (a2 << 12) | (a3 >> 12);
+	board_t b1 = a & 0xFF00FF0000FF00FFULL;
+	board_t b2 = a & 0x00FF00FF00000000ULL;
+	board_t b3 = a & 0x00000000FF00FF00ULL;
+	return b1 | (b2 >> 24) | (b3 << 24);
+}
+
 /* We can perform state lookups one row at a time by using arrays with 65536 entries. */
 
 /* Move tables. Each row or compressed column is mapped to (oldrow^newrow) assuming row/col 0.
@@ -74,19 +91,21 @@ void init_move_tables(void) {
 
 static inline board_t execute_move_0(board_t board) {
     board_t ret = board;
-    ret ^= col_up_table[pack_col((board >>  0) & COL_MASK)] <<  0;
-    ret ^= col_up_table[pack_col((board >>  4) & COL_MASK)] <<  4;
-    ret ^= col_up_table[pack_col((board >>  8) & COL_MASK)] <<  8;
-    ret ^= col_up_table[pack_col((board >> 12) & COL_MASK)] << 12;
+    board_t t = transpose(board);
+    ret ^= col_up_table[(t >>  0) & ROW_MASK] <<  0;
+    ret ^= col_up_table[(t >> 16) & ROW_MASK] <<  4;
+    ret ^= col_up_table[(t >> 32) & ROW_MASK] <<  8;
+    ret ^= col_up_table[(t >> 48) & ROW_MASK] << 12;
     return ret;
 }
 
 static inline board_t execute_move_1(board_t board) {
     board_t ret = board;
-    ret ^= col_down_table[pack_col((board >>  0) & COL_MASK)] <<  0;
-    ret ^= col_down_table[pack_col((board >>  4) & COL_MASK)] <<  4;
-    ret ^= col_down_table[pack_col((board >>  8) & COL_MASK)] <<  8;
-    ret ^= col_down_table[pack_col((board >> 12) & COL_MASK)] << 12;
+    board_t t = transpose(board);
+    ret ^= col_down_table[(t >>  0) & ROW_MASK] <<  0;
+    ret ^= col_down_table[(t >> 16) & ROW_MASK] <<  4;
+    ret ^= col_down_table[(t >> 32) & ROW_MASK] <<  8;
+    ret ^= col_down_table[(t >> 48) & ROW_MASK] << 12;
     return ret;
 }
 
@@ -219,17 +238,10 @@ static float score_helper(board_t board, const float* table) {
            table[(board >> 48) & ROW_MASK];
 }
 
-static float score_col_helper(board_t board, const float* table) {
-    return table[pack_col((board >>  0) & COL_MASK)] +
-           table[pack_col((board >>  4) & COL_MASK)] +
-           table[pack_col((board >>  8) & COL_MASK)] +
-           table[pack_col((board >> 12) & COL_MASK)];
-}
-
 static float score_heur_board(board_t board) {
-    return score_helper    (board, line_heur_score_table) +
-           score_col_helper(board, line_heur_score_table) +
-           100000;
+    return score_helper(          board , line_heur_score_table) +
+           score_helper(transpose(board), line_heur_score_table) +
+           100000.0f;
 }
 
 static float score_board(board_t board) {

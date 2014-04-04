@@ -30,10 +30,6 @@ static inline void print_board(board_t board) {
     printf("\n");
 }
 
-static inline row_t pack_col(board_t col) {
-    return (row_t)(col | (col >> 12) | (col >> 24) | (col >> 36));
-}
-
 static inline board_t unpack_col(row_t row) {
     board_t tmp = row;
     return (tmp | (tmp << 12ULL) | (tmp << 24ULL) | (tmp << 36ULL)) & COL_MASK;
