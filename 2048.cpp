@@ -394,6 +394,11 @@ int ask_for_move(board_t board) {
     }
 }
 
+static unsigned unif_random(unsigned n)
+{
+    return rand() % n;
+}
+
 /* Playing the game */
 static int draw_tile() {
     return (unif_random(10) < 9) ? 1 : 2;
@@ -480,6 +485,7 @@ int main(int argc, char **argv) {
     (void)argc;
     (void)argv;
 
+    srand(123); // fixed seed, for benchmarking we want the same sequence
     init_move_tables();
     init_score_tables();
 

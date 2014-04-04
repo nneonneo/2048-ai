@@ -3,51 +3,6 @@
 
 #include <stdlib.h>
 
-/** unif_random */
-/* unif_random is defined as a random number generator returning a value in [0..n-1]. */
-#if defined(__APPLE__)
-static inline unsigned unif_random(unsigned n) {
-    return arc4random_uniform(n);
-}
-#elif defined(__linux__)
-// Warning: This is a slightly biased RNG.
-#include <unistd.h>
-#include <fcntl.h>
-#include <time.h>
-static inline unsigned unif_random(unsigned n) {
-    static int seeded = 0;
-
-    if(!seeded) {
-        int fd = open("/dev/urandom", O_RDONLY);
-        unsigned short seed[3];
-        if(fd < 0 || read(fd, seed, sizeof(seed)) < (int)sizeof(seed)) {
-            srand48(time(NULL));
-        } else {
-            seed48(seed);
-        }
-        if(fd >= 0)
-            close(fd);
-
-        seeded = 1;
-    }
-
-    return (int)(drand48() * n);
-}
-#else
-// Warning: This is a slightly biased RNG.
-#include <time.h>
-static inline unsigned unif_random(unsigned n) {
-    static int seeded = 0;
-
-    if(!seeded) {
-        srand(time(NULL));
-        seeded = 1;
-    }
-
-    return rand() % n;
-}
-#endif
-
 /** DLL_PUBLIC */
 /* DLL_PUBLIC definition from http://gcc.gnu.org/wiki/Visibility */
 #if defined _WIN32 || defined __CYGWIN__
