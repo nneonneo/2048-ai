@@ -26,6 +26,24 @@ static inline board_t transpose(board_t x)
 	return b1 | (b2 >> 24) | (b3 << 24);
 }
 
+// Count the number of empty positions (= zero nibbles) in a board.
+// Precondition: the board cannot be fully empty.
+static int count_empty(uint64_t x)
+{
+	x |= (x >> 2) & 0x3333333333333333ULL;
+	x |= (x >> 1);
+	x = ~x & 0x1111111111111111ULL;
+	// At this point each nibble is:
+	//  0 if the original nibble was non-zero
+	//  1 if the original nibble was zero
+	// Next sum them all
+	x += x >> 32;
+	x += x >> 16;
+	x += x >>  8;
+	x += x >>  4; // this can overflow to the next nibble if there were 16 empty positions
+	return x & 0xf;
+}
+
 /* We can perform state lookups one row at a time by using arrays with 65536 entries. */
 
 /* Move tables. Each row or compressed column is mapped to (oldrow^newrow) assuming row/col 0.
@@ -234,23 +252,16 @@ static float score_board(board_t board) {
 }
 
 static float score_tilechoose_node(eval_state &state, board_t board, float cprob) {
-    float res = 0;
-    int num_open = 0;
-
-    for(int i=0; i<16; i++) {
-        if(((board >> (4*i)) & 0xf) == 0)
-            num_open++;
-    }
-
+    int num_open = count_empty(board);
     cprob /= num_open;
 
+    float res = 0.0f;
     for(int i=0; i<16; i++) {
         if(((board >> (4*i)) & 0xf) == 0) {
             res += score_move_node(state, board | (((board_t)1) << (4*i)), cprob * 0.9f) * 0.9f;
             res += score_move_node(state, board | (((board_t)2) << (4*i)), cprob * 0.1f) * 0.1f;
         }
     }
-
     return res / num_open;
 }
 
@@ -366,13 +377,7 @@ static int draw_tile() {
 }
 
 static board_t insert_tile_rand(board_t board, int tile) {
-    int num_open = 0;
-    for(int i=0; i<16; i++) {
-        if(((board >> (4*i)) & 0xf) == 0)
-            num_open++;
-    }
-
-    int index = unif_random(num_open);
+    int index = unif_random(count_empty(board));
     for(int i=0; i<16; i++) {
         if(((board >> (4*i)) & 0xf) != 0)
             continue;
