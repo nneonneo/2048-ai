@@ -245,7 +245,7 @@ static const int CACHE_DEPTH_LIMIT  = 6;
 static const int SEARCH_DEPTH_LIMIT = 8;
 
 static float score_move_node(eval_state &state, board_t board, float cprob) {
-    if(cprob < state.cprob_thresh || state.curdepth >= SEARCH_DEPTH_LIMIT) {
+    if (cprob < state.cprob_thresh || state.curdepth >= SEARCH_DEPTH_LIMIT) {
         return score_heur_board(board);
     }
 
@@ -254,21 +254,17 @@ static float score_move_node(eval_state &state, board_t board, float cprob) {
         if (it != state.trans_table.end()) return it->second;
     }
 
-    int move;
-    float best = 0;
-
+    float best = 0.0f;
     state.curdepth++;
-    for(move=0; move<4; move++) {
+    for (int move = 0; move < 4; ++move) {
         board_t newboard = execute_move(move, board);
-        if (board == newboard) continue;
-
-        float res = score_tilechoose_node(state, newboard, cprob);
-        if(res > best)
-            best = res;
+        if (board != newboard) {
+            best = std::max(best, score_tilechoose_node(state, newboard, cprob));
+        }
     }
     state.curdepth--;
 
-    if(state.curdepth < CACHE_DEPTH_LIMIT) {
+    if (state.curdepth < CACHE_DEPTH_LIMIT) {
         state.trans_table[board] = best;
     }
 
