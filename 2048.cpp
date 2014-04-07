@@ -197,9 +197,8 @@ static inline board_t execute_move(int move, board_t board) {
 
 static inline int get_max_rank(board_t board) {
     int maxrank = 0;
-    while(board) {
-        int k = board & 0xf;
-        if(k > maxrank) maxrank = k;
+    while (board) {
+        maxrank = std::max(maxrank, int(board & 0xf));
         board >>= 4;
     }
     return maxrank;
