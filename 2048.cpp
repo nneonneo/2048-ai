@@ -1,12 +1,9 @@
-#include <ctype.h>
-#include <stdio.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
-#include <algorithm>
 #include <unordered_map>
+#include <algorithm>
 #include <cassert>
+#include <cstdint>
+#include <cstdio>
+#include <cstdlib>
 
 /* The fundamental trick: the 4x4 board is represented as a 64-bit word,
  * with each board square packed into a single 4-bit nibble.
@@ -18,13 +15,12 @@
  *
  * The nibble shift can be computed as (r,c) -> shift (4*r + c). That is, (0,0) is the LSB.
  */
-
 typedef uint64_t board_t;
 typedef uint16_t row_t;
-
 static const board_t ROW_MASK = 0xFFFFULL;
 
-static void print_board(board_t board) {
+static void print_board(board_t board)
+{
     for (int i = 0; i < 4; ++i) {
         for (int j = 0; j < 4; ++j) {
             putchar("0123456789abcdef"[board & 0xf]);
@@ -40,7 +36,7 @@ static void print_board(board_t board) {
 //   4567  -->  159d
 //   89ab       26ae
 //   cdef       37bf
-static inline board_t transpose(board_t x)
+static board_t transpose(board_t x)
 {
 	board_t a1 = x & 0xF0F00F0FF0F00F0FULL;
 	board_t a2 = x & 0x0000F0F00000F0F0ULL;
@@ -57,7 +53,8 @@ static inline board_t transpose(board_t x)
 //   4567  -->  7654
 //   89ab       ba98
 //   cdef       fedc
-static inline board_t reverse_rows(board_t board) {
+static board_t reverse_rows(board_t board)
+{
     return ((board & 0xF000F000F000F000ULL) >> 12) |
            ((board & 0x0F000F000F000F00ULL) >>  4) |
            ((board & 0x00F000F000F000F0ULL) <<  4) |
@@ -117,7 +114,8 @@ static const int MAX_SCORE_IDX = 3000; // actually ATM 2875 would be enough
 static uint16_t score_idx[65536]; // points to a value in score_table[]
 static int score_table[MAX_SCORE_IDX];
 
-static void init_tables() {
+static void init_tables()
+{
     int score_cnt = 0;
     int heur_cnt = 0;
     for (unsigned row = 0; row < 65536; ++row) {
@@ -190,7 +188,6 @@ static void init_tables() {
                 line[j] = 0;
             }
         }
-
         row_t result = (line[0] <<  0) |
                        (line[1] <<  4) |
                        (line[2] <<  8) |
@@ -199,7 +196,8 @@ static void init_tables() {
     }
 }
 
-static board_t execute_move_left(board_t board) {
+static board_t execute_move_left(board_t board)
+{
     board_t ret = board;
     ret ^= board_t(move_left_table[(board >>  0) & ROW_MASK]) <<  0;
     ret ^= board_t(move_left_table[(board >> 16) & ROW_MASK]) << 16;
@@ -207,13 +205,16 @@ static board_t execute_move_left(board_t board) {
     ret ^= board_t(move_left_table[(board >> 48) & ROW_MASK]) << 48;
     return ret;
 }
-static board_t execute_move_right(board_t board) {
+static board_t execute_move_right(board_t board)
+{
     return reverse_rows(execute_move_left(reverse_rows(board)));
 }
-static board_t execute_move_up(board_t board) {
+static board_t execute_move_up(board_t board)
+{
     return transpose(execute_move_left(transpose(board)));
 }
-static board_t execute_move_down(board_t board) {
+static board_t execute_move_down(board_t board)
+{
     // transpose(reverse_rows(..)) is equivalent to reverse_cols(transpose(..))
     // but the latter generates faster code. And similarly
     // reverse_rows(transpose(..)) is equivalent to transpose(reverse_cols(..))
@@ -222,7 +223,8 @@ static board_t execute_move_down(board_t board) {
     return reverse_cols(transpose(execute_move_left(transpose(reverse_cols(board)))));
 }
 
-static inline int get_max_rank(board_t board) {
+static int get_max_rank(board_t board)
+{
     int maxrank = 0;
     while (board) {
         maxrank = std::max(maxrank, int(board & 0xf));
@@ -231,7 +233,8 @@ static inline int get_max_rank(board_t board) {
     return maxrank;
 }
 
-static float score_helper(board_t board) {
+static float score_helper(board_t board)
+{
     return heur_scores[heur_idx[(board >>  0) & ROW_MASK]] +
            heur_scores[heur_idx[(board >> 16) & ROW_MASK]] +
            heur_scores[heur_idx[(board >> 32) & ROW_MASK]] +
@@ -239,19 +242,22 @@ static float score_helper(board_t board) {
 }
 
 // score a single board heuristically
-static float score_heur_board(board_t board) {
+static float score_heur_board(board_t board)
+{
     return score_helper(board) + score_helper(transpose(board));
 }
 
 // score a single board actually (adding in the score from spawned 4 tiles)
-static int score_board(board_t board) {
+static int score_board(board_t board)
+{
     return score_table[score_idx[(board >>  0) & ROW_MASK]] +
            score_table[score_idx[(board >> 16) & ROW_MASK]] +
            score_table[score_idx[(board >> 32) & ROW_MASK]] +
            score_table[score_idx[(board >> 48) & ROW_MASK]];
 }
 
-struct eval_state {
+struct eval_state
+{
     std::unordered_map<board_t, float> trans_table; // transposition table, to cache previously-seen moves
     float cprob_thresh;
     int curdepth;
@@ -260,7 +266,8 @@ struct eval_state {
 static float score_move_node(eval_state& state, board_t board, float cprob);
 
 // score over all possible tile choices and placements
-static float score_tilechoose_node(eval_state& state, board_t board, float cprob) {
+static float score_tilechoose_node(eval_state& state, board_t board, float cprob)
+{
     int num_open = count_empty(board);
     cprob /= num_open;
 
@@ -286,7 +293,8 @@ static const int CACHE_DEPTH_LIMIT  = 6;
 static const int SEARCH_DEPTH_LIMIT = 8;
 
 // score over all possible moves
-static float score_move_node(eval_state& state, board_t board, float cprob) {
+static float score_move_node(eval_state& state, board_t board, float cprob)
+{
     if (cprob < state.cprob_thresh || state.curdepth >= SEARCH_DEPTH_LIMIT) {
         return score_heur_board(board);
     }
@@ -312,11 +320,11 @@ static float score_move_node(eval_state& state, board_t board, float cprob) {
     if (state.curdepth < CACHE_DEPTH_LIMIT) {
         state.trans_table[board] = best;
     }
-
     return best;
 }
 
-static float score_toplevel_move(board_t board) {
+static float score_toplevel_move(board_t board)
+{
     eval_state state;
     state.cprob_thresh = CPROB_THRESH_BASE;
     state.curdepth = 0;
@@ -324,7 +332,8 @@ static float score_toplevel_move(board_t board) {
 }
 
 // Execute the best move for a given board.
-static board_t do_best_move(board_t board) {
+static board_t do_best_move(board_t board)
+{
     float bestScore = -1.0f;
     board_t bestmove = board;
 
@@ -367,12 +376,13 @@ static unsigned unif_random(unsigned n)
     return rand() % n;
 }
 
-/* Playing the game */
-static board_t draw_tile() {
+static board_t draw_tile()
+{
     return (unif_random(10) < 9) ? 1 : 2;
 }
 
-static board_t insert_tile_rand(board_t board, board_t tile) {
+static board_t insert_tile_rand(board_t board, board_t tile)
+{
     int index = unif_random(count_empty(board));
     board_t tmp = board;
     while (true) {
@@ -388,12 +398,14 @@ static board_t insert_tile_rand(board_t board, board_t tile) {
     return board | tile;
 }
 
-static board_t initial_board() {
+static board_t initial_board()
+{
     board_t board = draw_tile() << (4 * unif_random(16));
     return insert_tile_rand(board, draw_tile());
 }
 
-static void play_game() {
+static void play_game()
+{
     board_t board = initial_board();
     int moveno = 0;
     int scorepenalty = 0; // "penalty" for obtaining free 4 tiles
@@ -410,10 +422,11 @@ static void play_game() {
         board = insert_tile_rand(newboard, tile);
     }
 
-    printf("Game over. Your score is %d. The highest rank you achieved was %d.\n", score_board(board) - scorepenalty, get_max_rank(board));
+    printf("Game over. The highest rank you achieved was %d.\n", get_max_rank(board));
 }
 
-int main() {
+int main()
+{
     srand(123); // fixed seed, for benchmarking we want the same sequence
     init_tables();
     play_game();
