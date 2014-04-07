@@ -191,8 +191,6 @@ struct eval_state {
     std::unordered_map<board_t, float> trans_table; // transposition table, to cache previously-seen moves
     float cprob_thresh;
     int curdepth;
-
-    eval_state() : cprob_thresh(0), curdepth(0) {}
 };
 
 // score a single board heuristically
@@ -276,14 +274,14 @@ float score_toplevel_move(board_t board, int move) {
 
     eval_state state;
     state.cprob_thresh = CPROB_THRESH_BASE;
-
-    return score_tilechoose_node(state, newboard, 1.0f) + 1e-6f;
+    state.curdepth = 0;
+    return score_tilechoose_node(state, newboard, 1.0f);
 }
 
 /* Find the best move for a given board. */
 int find_best_move(board_t board) {
     int move;
-    float best = 0;
+    float best = -1.0f;
     int bestmove = -1;
 
     print_board(board);
