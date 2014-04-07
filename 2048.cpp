@@ -222,16 +222,6 @@ static board_t execute_move_down(board_t board) {
     return reverse_cols(transpose(execute_move_left(transpose(reverse_cols(board)))));
 }
 
-static inline board_t execute_move(int move, board_t board) {
-    switch (move) {
-    case 0: return execute_move_up   (board);
-    case 1: return execute_move_down (board);
-    case 2: return execute_move_left (board);
-    case 3: return execute_move_right(board);
-    default: return ~0ULL;
-    }
-}
-
 static inline int get_max_rank(board_t board) {
     int maxrank = 0;
     while (board) {
@@ -326,28 +316,49 @@ static float score_move_node(eval_state& state, board_t board, float cprob) {
     return best;
 }
 
-static float score_toplevel_move(board_t board, int move, board_t& newboard) {
-    newboard = execute_move(move, board);
-    if (board == newboard) return 0.0f;
-
+static float score_toplevel_move(board_t board) {
     eval_state state;
     state.cprob_thresh = CPROB_THRESH_BASE;
     state.curdepth = 0;
-    return score_tilechoose_node(state, newboard, 1.0f);
+    return score_tilechoose_node(state, board, 1.0f);
 }
 
 // Execute the best move for a given board.
 static board_t do_best_move(board_t board) {
-    float best = -1.0f;
+    float bestScore = -1.0f;
     board_t bestmove = board;
-    for (int move = 0; move < 4; ++move) {
-        board_t newboard;
-        float res = score_toplevel_move(board, move, newboard);
-        if (res > best) {
-            best = res;
-            bestmove = newboard;
+
+    board_t up = execute_move_up(board);
+    if (board != up) {
+        float scoreUp = score_toplevel_move(up);
+        bestScore = scoreUp;
+        bestmove = up;
+    }
+    board_t down = execute_move_down(board);
+    if (board != down) {
+        float scoreDown = score_toplevel_move(down);
+        if (scoreDown > bestScore) {
+            bestScore = scoreDown;
+            bestmove = down;
         }
     }
+    board_t left = execute_move_left(board);
+    if (board != left) {
+        float scoreLeft = score_toplevel_move(left);
+        if (scoreLeft > bestScore) {
+            bestScore = scoreLeft;
+            bestmove = left;
+        }
+    }
+    board_t right = execute_move_right(board);
+    if (board != right) {
+        float scoreRight = score_toplevel_move(right);
+        if (scoreRight > bestScore) {
+            bestScore = scoreRight;
+            bestmove = right;
+        }
+    }
+
     return bestmove;
 }
 
