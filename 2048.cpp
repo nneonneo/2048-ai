@@ -225,11 +225,15 @@ static float score_tilechoose_node(eval_state &state, board_t board, float cprob
     cprob /= num_open;
 
     float res = 0.0f;
-    for(int i=0; i<16; i++) {
-        if(((board >> (4*i)) & 0xf) == 0) {
-            res += score_move_node(state, board | (((board_t)1) << (4*i)), cprob * 0.9f) * 0.9f;
-            res += score_move_node(state, board | (((board_t)2) << (4*i)), cprob * 0.1f) * 0.1f;
+    board_t tmp = board;
+    board_t tile_2 = 1;
+    while (tile_2) {
+        if ((tmp & 0xf) == 0) {
+            res += score_move_node(state, board |  tile_2      , cprob * 0.9f) * 0.9f;
+            res += score_move_node(state, board | (tile_2 << 1), cprob * 0.1f) * 0.1f;
         }
+        tmp >>= 4;
+        tile_2 <<= 4;
     }
     return res / num_open;
 }
