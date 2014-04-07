@@ -55,7 +55,7 @@ static row_t row_right_table[65536];
 static board_t col_up_table[65536];
 static board_t col_down_table[65536];
 static float heur_score_table[65536];
-static float score_table[65536];
+static int score_table[65536];
 
 void init_tables() {
     for (unsigned row = 0; row < 65536; ++row) {
@@ -67,7 +67,7 @@ void init_tables() {
         };
 
         float heur_score = 0.0f;
-        float score = 0.0f;
+        int score = 0;
         for (int i = 0; i < 4; ++i) {
             int rank = line[i];
             if (rank == 0) {
@@ -207,14 +207,14 @@ struct eval_state {
 // score a single board heuristically
 static float score_heur_board(board_t board);
 // score a single board actually (adding in the score from spawned 4 tiles)
-static float score_board(board_t board);
+static int score_board(board_t board);
 // score over all possible moves
 static float score_move_node(eval_state &state, board_t board, float cprob);
 // score over all possible tile choices and placements
 static float score_tilechoose_node(eval_state &state, board_t board, float cprob);
 
 
-static float score_helper(board_t board, const float* table) {
+template<typename T> static T score_helper(board_t board, const T* table) {
     return table[(board >>  0) & ROW_MASK] +
            table[(board >> 16) & ROW_MASK] +
            table[(board >> 32) & ROW_MASK] +
@@ -227,7 +227,7 @@ static float score_heur_board(board_t board) {
            100000.0f;
 }
 
-static float score_board(board_t board) {
+static int score_board(board_t board) {
     return score_helper(board, score_table);
 }
 
@@ -393,7 +393,7 @@ void play_game(get_move_func_t get_move) {
         if(move == 4)
             break; // no legal moves
 
-        printf("\nMove #%d, current score=%.0f\n", ++moveno, score_board(board) - scorepenalty);
+        printf("\nMove #%d, current score=%d\n", ++moveno, score_board(board) - scorepenalty);
 
         move = get_move(board);
         if(move < 0)
@@ -412,7 +412,7 @@ void play_game(get_move_func_t get_move) {
     }
 
     print_board(board);
-    printf("\nGame over. Your score is %.0f. The highest rank you achieved was %d.\n", score_board(board) - scorepenalty, get_max_rank(board));
+    printf("\nGame over. Your score is %d. The highest rank you achieved was %d.\n", score_board(board) - scorepenalty, get_max_rank(board));
 }
 
 int main() {
