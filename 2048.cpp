@@ -103,7 +103,7 @@ void init_tables() {
                 (row >> 12) & 0xf
         };
 
-        float heur_score = 0.0f;
+        float heur_score = 100000.0f / (4 + 4); // constant term spread over 4+4 rows/columns
         int score = 0;
         for (int i = 0; i < 4; ++i) {
             int rank = line[i];
@@ -242,9 +242,7 @@ static float score_helper(board_t board) {
 }
 
 static float score_heur_board(board_t board) {
-    return score_helper(          board ) +
-           score_helper(transpose(board)) +
-           100000.0f;
+    return score_helper(board) + score_helper(transpose(board));
 }
 
 static int score_board(board_t board) {
