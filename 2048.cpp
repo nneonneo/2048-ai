@@ -6,6 +6,7 @@
 #include <time.h>
 #include <algorithm>
 #include <unordered_map>
+#include <cassert>
 
 #include "2048.h"
 
@@ -73,10 +74,27 @@ static int count_empty(uint64_t x)
 // 0 if there is no move, and otherwise equals a value that can easily be
 // xor'ed into the current board state to update the board.
 static row_t move_left_table[65536];
-static float heur_score_table[65536];
-static int score_table[65536];
+
+// Table to speedup heuristic-score calculation.
+//   This lookup table contains 65536 entries and we want a 'float' result, so
+//   the obvious choice would be 'float table[65536]'. Though it turns out
+//   there are only very few unique values in this table. So we can save quite
+//   some memory by storing an (8-bit) index into a 2nd table that contains the
+//   actual float value.
+static const int MAX_HEUR_IDX = 100; // actually ATM 23 would be enough
+static uint8_t heur_idx[65536]; // points to a value in heur_scores[]
+static float heur_scores[MAX_HEUR_IDX];
+
+// Table to speedup score calculation.
+//   Similar to above: we cut the memory requirements (almost) in half by
+//   storing a (16-bit) index to a 2nd table.
+static const int MAX_SCORE_IDX = 3000; // actually ATM 2875 would be enough
+static uint16_t score_idx[65536]; // points to a value in score_table[]
+static int score_table[MAX_SCORE_IDX];
 
 void init_tables() {
+    int score_cnt = 0;
+    int heur_cnt = 0;
     for (unsigned row = 0; row < 65536; ++row) {
         unsigned line[4] = {
                 (row >>  0) & 0xf,
@@ -96,7 +114,14 @@ void init_tables() {
                 score += (rank - 1) * (1 << rank);
             }
         }
-        score_table[row] = score;
+        // store 'score' into 'score_idx' (and possibly update 'score_table')
+        int sidx = std::find(score_table, score_table + score_cnt, score) - score_table;
+        if (sidx == score_cnt) {
+            score_table[sidx] = score;
+            ++score_cnt;
+        }
+        assert(sidx < MAX_SCORE_IDX);
+        score_idx[row] = sidx;
 
         int maxi = 0;
         for (int i = 1; i < 4; ++i) {
@@ -114,8 +139,14 @@ void init_tables() {
         if ((line[0] < line[1]) && (line[1] < line[2]) && (line[2] < line[3])) heur_score += 10000.0f;
         if ((line[0] > line[1]) && (line[1] > line[2]) && (line[2] > line[3])) heur_score += 10000.0f;
 
-        heur_score_table[row] = heur_score;
-
+        // store 'heur_score' into 'heur_idx' (and possibly update 'heur_scores')
+        int hidx = std::find(heur_scores, heur_scores + heur_cnt, heur_score) - heur_scores;
+        if (hidx == heur_cnt) {
+            heur_scores[hidx] = heur_score;
+            ++heur_cnt;
+        }
+        assert(hidx < MAX_HEUR_IDX);
+        heur_idx[row] = hidx;
 
         // execute a move to the left
         for (int i = 0; i < 3; ++i) {
@@ -203,21 +234,24 @@ static float score_move_node(eval_state &state, board_t board, float cprob);
 static float score_tilechoose_node(eval_state &state, board_t board, float cprob);
 
 
-template<typename T> static T score_helper(board_t board, const T* table) {
-    return table[(board >>  0) & ROW_MASK] +
-           table[(board >> 16) & ROW_MASK] +
-           table[(board >> 32) & ROW_MASK] +
-           table[(board >> 48) & ROW_MASK];
+static float score_helper(board_t board) {
+    return heur_scores[heur_idx[(board >>  0) & ROW_MASK]] +
+           heur_scores[heur_idx[(board >> 16) & ROW_MASK]] +
+           heur_scores[heur_idx[(board >> 32) & ROW_MASK]] +
+           heur_scores[heur_idx[(board >> 48) & ROW_MASK]];
 }
 
 static float score_heur_board(board_t board) {
-    return score_helper(          board , heur_score_table) +
-           score_helper(transpose(board), heur_score_table) +
+    return score_helper(          board ) +
+           score_helper(transpose(board)) +
            100000.0f;
 }
 
 static int score_board(board_t board) {
-    return score_helper(board, score_table);
+    return score_table[score_idx[(board >>  0) & ROW_MASK]] +
+           score_table[score_idx[(board >> 16) & ROW_MASK]] +
+           score_table[score_idx[(board >> 32) & ROW_MASK]] +
+           score_table[score_idx[(board >> 48) & ROW_MASK]];
 }
 
 static float score_tilechoose_node(eval_state &state, board_t board, float cprob) {
