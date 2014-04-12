@@ -1,2 +1,13 @@
 bin/
 *.pyc
+*~
+
+# autoconf intermediates
+aclocal.m4
+autom4te.cache/
+
+# configure script output
+config.h
+config.log
+config.status
+Makefile
