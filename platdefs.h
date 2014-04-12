@@ -1,15 +1,17 @@
 #ifndef PLATDEFS_H
 #define PLATDEFS_H
 
+#include "config.h"
+
 #include <stdlib.h>
 
 /** unif_random */
 /* unif_random is defined as a random number generator returning a value in [0..n-1]. */
-#if defined(__APPLE__)
+#if defined(HAVE_ARC4RANDOM_UNIFORM)
 static inline unsigned unif_random(unsigned n) {
     return arc4random_uniform(n);
 }
-#elif defined(__linux__)
+#elif defined(HAVE_DRAND48)
 // Warning: This is a slightly biased RNG.
 #include <unistd.h>
 #include <fcntl.h>
@@ -79,7 +81,7 @@ static inline unsigned unif_random(unsigned n) {
 /* Win32 gettimeofday implementation from
 http://social.msdn.microsoft.com/Forums/vstudio/en-US/430449b3-f6dd-4e18-84de-eebd26a8d668/gettimeofday
 with a missing "0" added to DELTA_EPOCH_IN_MICROSECS */
-#ifdef _WIN32
+#if defined(_WIN32) && (!defined(HAVE_GETTIMEOFDAY) || !defined(HAVE_SYS_TIME_H))
 #include <time.h>
 #include <windows.h>
 #if defined(_MSC_VER) || defined(_MSC_EXTENSIONS)
