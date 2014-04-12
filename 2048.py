@@ -7,7 +7,16 @@ import os
 # Enable multithreading?
 MULTITHREAD = True
 
-ailib = ctypes.CDLL('bin/2048.so')
+for suffix in ['so', 'dll', 'dylib']:
+    try:
+        ailib = ctypes.CDLL('bin/2048.' + suffix)
+        break
+    except OSError as e:
+        pass
+else:
+    print "Couldn't load 2048 library bin/2048.{so,dll,dylib}! Make sure to build it first."
+    exit()
+
 ailib.init_move_tables()
 ailib.init_score_tables()
 
@@ -81,6 +90,9 @@ def rungame(args):
     # Use Keyboard2048Control if Fast2048Control doesn't seem to be working.
     gamectrl = Fast2048Control(ctrl)
     # gamectrl = Keyboard2048Control(ctrl)
+
+    if gamectrl.get_status() == 'ended':
+        gamectrl.restart_game()
 
     moveno = 0
     start = time.time()
