@@ -198,7 +198,7 @@ static inline board_t execute_move(int move, board_t board) {
 static inline int get_max_rank(board_t board) {
     int maxrank = 0;
     while (board) {
-        maxrank = std::max(maxrank, int(board & 0xf));
+        maxrank = max(maxrank, int(board & 0xf));
         board >>= 4;
     }
     return maxrank;
@@ -292,7 +292,7 @@ static float score_move_node(eval_state &state, board_t board, float cprob) {
         state.moves_evaled++;
 
         if (board != newboard) {
-            best = std::max(best, score_tilechoose_node(state, newboard, cprob));
+            best = max(best, score_tilechoose_node(state, newboard, cprob));
         }
     }
     state.curdepth--;
