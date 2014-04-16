@@ -1,5 +1,9 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+
 ''' Help the user achieve a high score in a real game of threes by using a move searcher. '''
 
+from __future__ import print_function
 import ctypes
 import time
 import os
@@ -14,7 +18,7 @@ for suffix in ['so', 'dll', 'dylib']:
     except OSError as e:
         pass
 else:
-    print "Couldn't load 2048 library bin/2048.{so,dll,dylib}! Make sure to build it first."
+    print("Couldn't load 2048 library bin/2048.{so,dll,dylib}! Make sure to build it first.")
     exit()
 
 ailib.init_tables()
@@ -35,8 +39,8 @@ def to_c_board(m):
 def print_board(m):
     for row in m:
         for c in row:
-            print '%8d' % c,
-        print
+            print('%8d' % c, end=' ')
+        print()
 
 def _to_val(c):
     if c == 0: return 0
@@ -64,7 +68,7 @@ if MULTITHREAD:
 
         print_board(to_val(m))
 
-        scores = pool.map(score_toplevel_move, [(board, move) for move in xrange(4)])
+        scores = pool.map(score_toplevel_move, [(board, move) for move in range(4)])
         bestmove, bestscore = max(enumerate(scores), key=lambda x:x[1])
         if bestscore == 0:
             return -1
@@ -108,13 +112,13 @@ def rungame(args):
         move = find_best_move(board)
         if move < 0:
             break
-        print "%010.6f: Score %d, Move %d: %s" % (time.time() - start, gamectrl.get_score(), moveno, movename(move))
+        print("%010.6f: Score %d, Move %d: %s" % (time.time() - start, gamectrl.get_score(), moveno, movename(move)))
         gamectrl.execute_move(move)
 
     score = gamectrl.get_score()
     board = gamectrl.get_board()
     maxval = max(max(row) for row in to_val(board))
-    print "Game over. Final score %d; highest tile %d." % (score, maxval)
+    print("Game over. Final score %d; highest tile %d." % (score, maxval))
 
 if __name__ == '__main__':
     import sys

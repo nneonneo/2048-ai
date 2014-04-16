@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import json
 import math
 import re
@@ -11,14 +12,15 @@ class BrowserRemoteControl(object):
         self.sock.connect(('localhost', port))
 
     def execute(self, cmd):
-        self.sock.send(cmd.replace('\n', ' ') + '\r\n')
+        msg = cmd.replace('\n', ' ') + '\r\n'
+        self.sock.send(msg.encode('utf8'))
         ret = []
         while True:
             chunk = self.sock.recv(4096)
             ret.append(chunk)
-            if '\n' in chunk:
+            if b'\n' in chunk:
                 break
-        res = json.loads(''.join(ret))
+        res = json.loads(b''.join(ret).decode('utf8'))
         if 'error' in res:
             raise Exception(res['error'])
         elif not res:
@@ -96,7 +98,7 @@ class Fast2048Control(Generic2048Control):
     def get_board(self):
         grid = self.execute('GameManager._instance.grid')
 
-        board = [[0]*4 for _ in xrange(4)]
+        board = [[0]*4 for _ in range(4)]
         for row in grid['cells']:
             for cell in row:
                 if cell is None:
@@ -154,7 +156,7 @@ class Keyboard2048Control(Generic2048Control):
                 res.push(tiles[i].className);
             res
             ''')
-        board = [[0]*4 for _ in xrange(4)]
+        board = [[0]*4 for _ in range(4)]
         for tile in res:
             tval = pos = None
             for k in tile.split():
