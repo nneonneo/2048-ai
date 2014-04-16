@@ -12,13 +12,13 @@ import os
 MULTITHREAD = True
 
 for suffix in ['so', 'dll', 'dylib']:
-    try:
-        ailib = ctypes.CDLL('bin/2048.' + suffix)
-        break
-    except OSError as e:
-        pass
+    dllfn = 'bin/2048.' + suffix
+    if not os.path.isfile(dllfn):
+        continue
+    ailib = ctypes.CDLL(dllfn)
+    break
 else:
-    print("Couldn't load 2048 library bin/2048.{so,dll,dylib}! Make sure to build it first.")
+    print("Couldn't find 2048 library bin/2048.{so,dll,dylib}! Make sure to build it first.")
     exit()
 
 ailib.init_tables()
