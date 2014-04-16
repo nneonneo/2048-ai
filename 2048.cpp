@@ -20,6 +20,15 @@
     typedef std::map<board_t, float> trans_table_t;
 #endif
 
+/* MSVC compatibility: undefine max and min macros */
+#if defined(max)
+#undef max
+#endif
+
+#if defined(min)
+#undef min
+#endif
+
 // Transpose rows/columns in a board:
 //   0123       048c
 //   4567  -->  159d
@@ -329,8 +338,8 @@ float score_toplevel_move(board_t board, int move) {
     elapsed = (finish.tv_sec - start.tv_sec);
     elapsed += (finish.tv_usec - start.tv_usec) / 1000000.0;
 
-    printf("Move %d: result %f: eval'd %d moves (%d cache hits, %zd cache size) in %.2f seconds (maxdepth=%d)\n", move, res,
-        state.moves_evaled, state.cachehits, state.trans_table.size(), elapsed, state.maxdepth);
+    printf("Move %d: result %f: eval'd %d moves (%d cache hits, %d cache size) in %.2f seconds (maxdepth=%d)\n", move, res,
+        state.moves_evaled, state.cachehits, (int)state.trans_table.size(), elapsed, state.maxdepth);
 
     return res;
 }
