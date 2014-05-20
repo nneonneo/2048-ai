@@ -77,6 +77,12 @@ static board_t col_down_table[65536];
 static float heur_score_table[65536];
 static float score_table[65536];
 
+// Heuristic scoring settings
+static const float SCORE_LOST_PENALTY = 30000.0f;
+static const float SCORE_MONOTONICITY_WEIGHT = 1.0f;
+static const float SCORE_MERGES_WEIGHT = 10.0f;
+static const float SCORE_EMPTY_WEIGHT = 10.0f;
+
 void init_tables() {
     for (unsigned row = 0; row < 65536; ++row) {
         unsigned line[4] = {
@@ -86,37 +92,54 @@ void init_tables() {
                 (row >> 12) & 0xf
         };
 
-        float heur_score = 0.0f;
+        // Score
         float score = 0.0f;
         for (int i = 0; i < 4; ++i) {
             int rank = line[i];
-            if (rank == 0) {
-                heur_score += 10000.0f;
-            } else if (rank >= 2) {
+            if (rank >= 2) {
                 // the score is the total sum of the tile and all intermediate merged tiles
                 score += (rank - 1) * (1 << rank);
             }
         }
         score_table[row] = score;
 
-        int maxi = 0;
-        for (int i = 1; i < 4; ++i) {
-            if (line[i] > line[maxi]) maxi = i;
+
+        // Heuristic score
+        int empty = 0;
+        int merges = 0;
+
+        int prev = 0;
+        int counter = 0;
+        for (int i = 0; i < 4; ++i) {
+            int rank = line[i];
+            if (rank == 0) {
+                empty++;
+            } else {
+                if (prev == rank) {
+                    counter++;
+                } else if (counter > 0) {
+                    merges += 1 + counter;
+                    counter = 0;
+                }
+                prev = rank;
+            }
+        }
+        if (counter > 0) {
+            merges += 1 + counter;
         }
 
-        if (maxi == 0 || maxi == 3) heur_score += 20000.0f;
-
-        // Check if maxi's are close to each other, and of diff ranks (eg 128 256)
+        int monotonicity_left = 0;
+        int monotonicity_right = 0;
         for (int i = 1; i < 4; ++i) {
-            if ((line[i] == line[i - 1] + 1) || (line[i] == line[i - 1] - 1)) heur_score += 1000.0f;
+            if (line[i-1] > line[i]) {
+                monotonicity_left += pow(line[i-1], 3) - pow(line[i], 3);
+            } else {
+                monotonicity_right += pow(line[i], 3) - pow(line[i-1], 3);
+            }
         }
 
-        // Check if the values are ordered:
-        if ((line[0] < line[1]) && (line[1] < line[2]) && (line[2] < line[3])) heur_score += 10000.0f;
-        if ((line[0] > line[1]) && (line[1] > line[2]) && (line[2] > line[3])) heur_score += 10000.0f;
-
-        heur_score_table[row] = heur_score;
-
+        heur_score_table[row] = SCORE_EMPTY_WEIGHT * empty + SCORE_MERGES_WEIGHT * merges -
+            SCORE_MONOTONICITY_WEIGHT * std::min(monotonicity_left, monotonicity_right);
 
         // execute a move to the left
         for (int i = 0; i < 3; ++i) {
@@ -246,7 +269,7 @@ static float score_helper(board_t board, const float* table) {
 static float score_heur_board(board_t board) {
     return score_helper(          board , heur_score_table) +
            score_helper(transpose(board), heur_score_table) +
-           100000.0f;
+           SCORE_LOST_PENALTY;
 }
 
 static float score_board(board_t board) {
