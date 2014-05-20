@@ -217,13 +217,12 @@ static inline int get_max_rank(board_t board) {
 
 struct eval_state {
     trans_table_t trans_table; // transposition table, to cache previously-seen moves
-    float cprob_thresh;
     int maxdepth;
     int curdepth;
     int cachehits;
     int moves_evaled;
 
-    eval_state() : cprob_thresh(0), maxdepth(0), curdepth(0), cachehits(0), moves_evaled(0) {
+    eval_state() : maxdepth(0), curdepth(0), cachehits(0), moves_evaled(0) {
     }
 };
 
@@ -280,7 +279,7 @@ static const int CACHE_DEPTH_LIMIT  = 6;
 static const int SEARCH_DEPTH_LIMIT = 8;
 
 static float score_move_node(eval_state &state, board_t board, float cprob) {
-    if (cprob < state.cprob_thresh || state.curdepth >= SEARCH_DEPTH_LIMIT) {
+    if (cprob < CPROB_THRESH_BASE || state.curdepth >= SEARCH_DEPTH_LIMIT) {
         if(state.curdepth > state.maxdepth)
             state.maxdepth = state.curdepth;
         return score_heur_board(board);
@@ -319,8 +318,6 @@ static float _score_toplevel_move(eval_state &state, board_t board, int move) {
 
     if(board == newboard)
         return 0;
-
-    state.cprob_thresh = CPROB_THRESH_BASE;
 
     return score_tilechoose_node(state, newboard, 1.0f) + 1e-6;
 }
