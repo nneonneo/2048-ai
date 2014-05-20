@@ -253,7 +253,27 @@ static float score_board(board_t board) {
     return score_helper(board, score_table);
 }
 
+// Statistics and controls
+// cprob: cumulative probability
+// don't recurse into a node with a cprob less than this threshold
+static const float CPROB_THRESH_BASE = 0.0001f;
+static const int CACHE_DEPTH_LIMIT  = 6;
+static const int SEARCH_DEPTH_LIMIT = 8;
+
 static float score_tilechoose_node(eval_state &state, board_t board, float cprob) {
+    if (cprob < CPROB_THRESH_BASE || state.curdepth >= SEARCH_DEPTH_LIMIT) {
+        state.maxdepth = std::max(state.curdepth, state.maxdepth);
+        return score_heur_board(board);
+    }
+
+    if (state.curdepth < CACHE_DEPTH_LIMIT) {
+        const trans_table_t::iterator &i = state.trans_table.find(board);
+        if (i != state.trans_table.end()) {
+            state.cachehits++;
+            return i->second;
+        }
+    }
+
     int num_open = count_empty(board);
     cprob /= num_open;
 
@@ -268,31 +288,16 @@ static float score_tilechoose_node(eval_state &state, board_t board, float cprob
         tmp >>= 4;
         tile_2 <<= 4;
     }
-    return res / num_open;
+    res = res / num_open;
+
+    if (state.curdepth < CACHE_DEPTH_LIMIT) {
+        state.trans_table[board] = res;
+    }
+
+    return res;
 }
 
-// Statistics and controls
-// cprob: cumulative probability
-// don't recurse into a node with a cprob less than this threshold
-static const float CPROB_THRESH_BASE = 0.0001f;
-static const int CACHE_DEPTH_LIMIT  = 6;
-static const int SEARCH_DEPTH_LIMIT = 8;
-
 static float score_move_node(eval_state &state, board_t board, float cprob) {
-    if (cprob < CPROB_THRESH_BASE || state.curdepth >= SEARCH_DEPTH_LIMIT) {
-        if(state.curdepth > state.maxdepth)
-            state.maxdepth = state.curdepth;
-        return score_heur_board(board);
-    }
-
-    if(state.curdepth < CACHE_DEPTH_LIMIT) {
-        const trans_table_t::iterator &i = state.trans_table.find(board);
-        if(i != state.trans_table.end()) {
-            state.cachehits++;
-            return i->second;
-        }
-    }
-
     float best = 0.0f;
     state.curdepth++;
     for (int move = 0; move < 4; ++move) {
@@ -304,10 +309,6 @@ static float score_move_node(eval_state &state, board_t board, float cprob) {
         }
     }
     state.curdepth--;
-
-    if (state.curdepth < CACHE_DEPTH_LIMIT) {
-        state.trans_table[board] = best;
-    }
 
     return best;
 }
