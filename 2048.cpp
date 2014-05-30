@@ -236,6 +236,24 @@ static inline int get_max_rank(board_t board) {
     return maxrank;
 }
 
+static inline int count_distinct_tiles(board_t board) {
+    uint16_t bitset = 0;
+    while (board) {
+        bitset |= 1<<(board & 0xf);
+        board >>= 4;
+    }
+
+    // Don't count empty tiles.
+    bitset >>= 1;
+
+    int count = 0;
+    while (bitset) {
+        bitset &= bitset - 1;
+        count++;
+    }
+    return count;
+}
+
 /* Optimizing the game */
 
 struct eval_state {
@@ -243,9 +261,10 @@ struct eval_state {
     int maxdepth;
     int curdepth;
     int cachehits;
-    int moves_evaled;
+    unsigned long moves_evaled;
+    int depth_limit;
 
-    eval_state() : maxdepth(0), curdepth(0), cachehits(0), moves_evaled(0) {
+    eval_state() : maxdepth(0), curdepth(0), cachehits(0), moves_evaled(0), depth_limit(0) {
     }
 };
 
@@ -281,10 +300,9 @@ static float score_board(board_t board) {
 // don't recurse into a node with a cprob less than this threshold
 static const float CPROB_THRESH_BASE = 0.0001f;
 static const int CACHE_DEPTH_LIMIT  = 6;
-static const int SEARCH_DEPTH_LIMIT = 8;
 
 static float score_tilechoose_node(eval_state &state, board_t board, float cprob) {
-    if (cprob < CPROB_THRESH_BASE || state.curdepth >= SEARCH_DEPTH_LIMIT) {
+    if (cprob < CPROB_THRESH_BASE || state.curdepth >= state.depth_limit) {
         state.maxdepth = std::max(state.curdepth, state.maxdepth);
         return score_heur_board(board);
     }
@@ -351,6 +369,7 @@ float score_toplevel_move(board_t board, int move) {
     struct timeval start, finish;
     double elapsed;
     eval_state state;
+    state.depth_limit = std::max(3, count_distinct_tiles(board) - 2);
 
     gettimeofday(&start, NULL);
     res = _score_toplevel_move(state, board, move);
@@ -359,7 +378,7 @@ float score_toplevel_move(board_t board, int move) {
     elapsed = (finish.tv_sec - start.tv_sec);
     elapsed += (finish.tv_usec - start.tv_usec) / 1000000.0;
 
-    printf("Move %d: result %f: eval'd %d moves (%d cache hits, %d cache size) in %.2f seconds (maxdepth=%d)\n", move, res,
+    printf("Move %d: result %f: eval'd %ld moves (%d cache hits, %d cache size) in %.2f seconds (maxdepth=%d)\n", move, res,
         state.moves_evaled, state.cachehits, (int)state.trans_table.size(), elapsed, state.maxdepth);
 
     return res;
