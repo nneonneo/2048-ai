@@ -48,7 +48,7 @@ static inline board_t transpose(board_t x)
 
 // Count the number of empty positions (= zero nibbles) in a board.
 // Precondition: the board cannot be fully empty.
-static int count_empty(uint64_t x)
+static int count_empty(board_t x)
 {
 	x |= (x >> 2) & 0x3333333333333333ULL;
 	x |= (x >> 1);
