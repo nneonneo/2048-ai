@@ -48,7 +48,7 @@ static inline board_t transpose(board_t x)
 
 // Count the number of empty positions (= zero nibbles) in a board.
 // Precondition: the board cannot be fully empty.
-static int count_empty(uint64_t x)
+static int count_empty(board_t x)
 {
 	x |= (x >> 2) & 0x3333333333333333ULL;
 	x |= (x >> 1);
@@ -77,6 +77,15 @@ static board_t col_down_table[65536];
 static float heur_score_table[65536];
 static float score_table[65536];
 
+// Heuristic scoring settings
+static const float SCORE_LOST_PENALTY = 200000.0f;
+static const float SCORE_MONOTONICITY_POWER = 4.0f;
+static const float SCORE_MONOTONICITY_WEIGHT = 47.0f;
+static const float SCORE_SUM_POWER = 3.5f;
+static const float SCORE_SUM_WEIGHT = 11.0f;
+static const float SCORE_MERGES_WEIGHT = 700.0f;
+static const float SCORE_EMPTY_WEIGHT = 270.0f;
+
 void init_tables() {
     for (unsigned row = 0; row < 65536; ++row) {
         unsigned line[4] = {
@@ -86,37 +95,59 @@ void init_tables() {
                 (row >> 12) & 0xf
         };
 
-        float heur_score = 0.0f;
+        // Score
         float score = 0.0f;
         for (int i = 0; i < 4; ++i) {
             int rank = line[i];
-            if (rank == 0) {
-                heur_score += 10000.0f;
-            } else if (rank >= 2) {
+            if (rank >= 2) {
                 // the score is the total sum of the tile and all intermediate merged tiles
                 score += (rank - 1) * (1 << rank);
             }
         }
         score_table[row] = score;
 
-        int maxi = 0;
-        for (int i = 1; i < 4; ++i) {
-            if (line[i] > line[maxi]) maxi = i;
+
+        // Heuristic score
+        float sum = 0;
+        int empty = 0;
+        int merges = 0;
+
+        int prev = 0;
+        int counter = 0;
+        for (int i = 0; i < 4; ++i) {
+            int rank = line[i];
+            sum += pow(rank, SCORE_SUM_POWER);
+            if (rank == 0) {
+                empty++;
+            } else {
+                if (prev == rank) {
+                    counter++;
+                } else if (counter > 0) {
+                    merges += 1 + counter;
+                    counter = 0;
+                }
+                prev = rank;
+            }
+        }
+        if (counter > 0) {
+            merges += 1 + counter;
         }
 
-        if (maxi == 0 || maxi == 3) heur_score += 20000.0f;
-
-        // Check if maxi's are close to each other, and of diff ranks (eg 128 256)
+        float monotonicity_left = 0;
+        float monotonicity_right = 0;
         for (int i = 1; i < 4; ++i) {
-            if ((line[i] == line[i - 1] + 1) || (line[i] == line[i - 1] - 1)) heur_score += 1000.0f;
+            if (line[i-1] > line[i]) {
+                monotonicity_left += pow(line[i-1], SCORE_MONOTONICITY_POWER) - pow(line[i], SCORE_MONOTONICITY_POWER);
+            } else {
+                monotonicity_right += pow(line[i], SCORE_MONOTONICITY_POWER) - pow(line[i-1], SCORE_MONOTONICITY_POWER);
+            }
         }
 
-        // Check if the values are ordered:
-        if ((line[0] < line[1]) && (line[1] < line[2]) && (line[2] < line[3])) heur_score += 10000.0f;
-        if ((line[0] > line[1]) && (line[1] > line[2]) && (line[2] > line[3])) heur_score += 10000.0f;
-
-        heur_score_table[row] = heur_score;
-
+        heur_score_table[row] = SCORE_LOST_PENALTY +
+            SCORE_EMPTY_WEIGHT * empty +
+            SCORE_MERGES_WEIGHT * merges -
+            SCORE_MONOTONICITY_WEIGHT * std::min(monotonicity_left, monotonicity_right) -
+            SCORE_SUM_WEIGHT * sum;
 
         // execute a move to the left
         for (int i = 0; i < 3; ++i) {
@@ -213,17 +244,35 @@ static inline int get_max_rank(board_t board) {
     return maxrank;
 }
 
+static inline int count_distinct_tiles(board_t board) {
+    uint16_t bitset = 0;
+    while (board) {
+        bitset |= 1<<(board & 0xf);
+        board >>= 4;
+    }
+
+    // Don't count empty tiles.
+    bitset >>= 1;
+
+    int count = 0;
+    while (bitset) {
+        bitset &= bitset - 1;
+        count++;
+    }
+    return count;
+}
+
 /* Optimizing the game */
 
 struct eval_state {
     trans_table_t trans_table; // transposition table, to cache previously-seen moves
-    float cprob_thresh;
     int maxdepth;
     int curdepth;
     int cachehits;
-    int moves_evaled;
+    unsigned long moves_evaled;
+    int depth_limit;
 
-    eval_state() : cprob_thresh(0), maxdepth(0), curdepth(0), cachehits(0), moves_evaled(0) {
+    eval_state() : maxdepth(0), curdepth(0), cachehits(0), moves_evaled(0), depth_limit(0) {
     }
 };
 
@@ -246,15 +295,33 @@ static float score_helper(board_t board, const float* table) {
 
 static float score_heur_board(board_t board) {
     return score_helper(          board , heur_score_table) +
-           score_helper(transpose(board), heur_score_table) +
-           100000.0f;
+           score_helper(transpose(board), heur_score_table);
 }
 
 static float score_board(board_t board) {
     return score_helper(board, score_table);
 }
 
+// Statistics and controls
+// cprob: cumulative probability
+// don't recurse into a node with a cprob less than this threshold
+static const float CPROB_THRESH_BASE = 0.0001f;
+static const int CACHE_DEPTH_LIMIT  = 6;
+
 static float score_tilechoose_node(eval_state &state, board_t board, float cprob) {
+    if (cprob < CPROB_THRESH_BASE || state.curdepth >= state.depth_limit) {
+        state.maxdepth = std::max(state.curdepth, state.maxdepth);
+        return score_heur_board(board);
+    }
+
+    if (state.curdepth < CACHE_DEPTH_LIMIT) {
+        const trans_table_t::iterator &i = state.trans_table.find(board);
+        if (i != state.trans_table.end()) {
+            state.cachehits++;
+            return i->second;
+        }
+    }
+
     int num_open = count_empty(board);
     cprob /= num_open;
 
@@ -269,31 +336,16 @@ static float score_tilechoose_node(eval_state &state, board_t board, float cprob
         tmp >>= 4;
         tile_2 <<= 4;
     }
-    return res / num_open;
+    res = res / num_open;
+
+    if (state.curdepth < CACHE_DEPTH_LIMIT) {
+        state.trans_table[board] = res;
+    }
+
+    return res;
 }
 
-// Statistics and controls
-// cprob: cumulative probability
-// don't recurse into a node with a cprob less than this threshold
-static const float CPROB_THRESH_BASE = 0.0001f;
-static const int CACHE_DEPTH_LIMIT  = 6;
-static const int SEARCH_DEPTH_LIMIT = 8;
-
 static float score_move_node(eval_state &state, board_t board, float cprob) {
-    if (cprob < state.cprob_thresh || state.curdepth >= SEARCH_DEPTH_LIMIT) {
-        if(state.curdepth > state.maxdepth)
-            state.maxdepth = state.curdepth;
-        return score_heur_board(board);
-    }
-
-    if(state.curdepth < CACHE_DEPTH_LIMIT) {
-        const trans_table_t::iterator &i = state.trans_table.find(board);
-        if(i != state.trans_table.end()) {
-            state.cachehits++;
-            return i->second;
-        }
-    }
-
     float best = 0.0f;
     state.curdepth++;
     for (int move = 0; move < 4; ++move) {
@@ -306,10 +358,6 @@ static float score_move_node(eval_state &state, board_t board, float cprob) {
     }
     state.curdepth--;
 
-    if (state.curdepth < CACHE_DEPTH_LIMIT) {
-        state.trans_table[board] = best;
-    }
-
     return best;
 }
 
@@ -320,8 +368,6 @@ static float _score_toplevel_move(eval_state &state, board_t board, int move) {
     if(board == newboard)
         return 0;
 
-    state.cprob_thresh = CPROB_THRESH_BASE;
-
     return score_tilechoose_node(state, newboard, 1.0f) + 1e-6;
 }
 
@@ -330,6 +376,7 @@ float score_toplevel_move(board_t board, int move) {
     struct timeval start, finish;
     double elapsed;
     eval_state state;
+    state.depth_limit = std::max(3, count_distinct_tiles(board) - 2);
 
     gettimeofday(&start, NULL);
     res = _score_toplevel_move(state, board, move);
@@ -338,7 +385,7 @@ float score_toplevel_move(board_t board, int move) {
     elapsed = (finish.tv_sec - start.tv_sec);
     elapsed += (finish.tv_usec - start.tv_usec) / 1000000.0;
 
-    printf("Move %d: result %f: eval'd %d moves (%d cache hits, %d cache size) in %.2f seconds (maxdepth=%d)\n", move, res,
+    printf("Move %d: result %f: eval'd %ld moves (%d cache hits, %d cache size) in %.2f seconds (maxdepth=%d)\n", move, res,
         state.moves_evaled, state.cachehits, (int)state.trans_table.size(), elapsed, state.maxdepth);
 
     return res;
