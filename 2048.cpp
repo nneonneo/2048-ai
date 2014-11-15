@@ -162,8 +162,11 @@ void init_tables() {
                 line[i] = line[j];
                 line[j] = 0;
                 i--; // retry this entry
-            } else if (line[i] == line[j] && line[i] != 0xf) {
-                line[i]++;
+            } else if (line[i] == line[j]) {
+                if(line[i] != 0xf) {
+                    /* Pretend that 32768 + 32768 = 32768 (representational limit). */
+                    line[i]++;
+                }
                 line[j] = 0;
             }
         }
