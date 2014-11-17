@@ -269,7 +269,7 @@ static float score_tilechoose_node(eval_state &state, board_t board, float cprob
 /* don't recurse into a node with a cprob less than this threshold */
 #define CPROB_THRESH_BASE (0.0001f)
 #define CACHE_DEPTH_LIMIT 6
-#define SEARCH_DEPTH_LIMIT 8
+#define SEARCH_DEPTH_LIMIT 6
 
 static float score_move_node(eval_state &state, board_t board, float cprob) {
     if(cprob < state.cprob_thresh || state.curdepth >= SEARCH_DEPTH_LIMIT) {
@@ -287,7 +287,8 @@ static float score_move_node(eval_state &state, board_t board, float cprob) {
     }
 
     int move;
-    float best = 0;
+    float best = 1e10;
+    bool can_move = false;
 
     state.curdepth++;
     for(move=0; move<4; move++) {
@@ -295,9 +296,10 @@ static float score_move_node(eval_state &state, board_t board, float cprob) {
         state.moves_evaled++;
         if(board == newboard)
             continue;
+        can_move = true;
 
         float res = score_tilechoose_node(state, newboard, cprob);
-        if(res > best)
+        if(res < best)
             best = res;
     }
     state.curdepth--;
@@ -306,6 +308,8 @@ static float score_move_node(eval_state &state, board_t board, float cprob) {
         state.trans_table[board] = best;
     }
 
+    if(!can_move)
+        return 0;
     return best;
 }
 
@@ -314,7 +318,7 @@ static float _score_toplevel_move(eval_state &state, board_t board, int move) {
     board_t newboard = execute_move(move, board);
 
     if(board == newboard)
-        return 0;
+        return 1e10;
 
     state.cprob_thresh = CPROB_THRESH_BASE;
 
@@ -343,7 +347,7 @@ float score_toplevel_move(board_t board, int move) {
 /* Find the best move for a given board. */
 int find_best_move(board_t board) {
     int move;
-    float best = 0;
+    float best = 1e10;
     int bestmove = -1;
 
     print_board(board);
@@ -352,7 +356,7 @@ int find_best_move(board_t board) {
     for(move=0; move<4; move++) {
         float res = score_toplevel_move(board, move);
 
-        if(res > best) {
+        if(res < best) {
             best = res;
             bestmove = move;
         }

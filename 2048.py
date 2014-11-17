@@ -57,9 +57,9 @@ if MULTITHREAD:
         print_board(to_val(m))
 
         scores = pool.map(score_toplevel_move, [(board, move) for move in xrange(4)])
-        bestmove, bestscore = max(enumerate(scores), key=lambda x:x[1])
-        if bestscore == 0:
-            return -1
+        bestmove, bestscore = min(enumerate(scores), key=lambda x:x[1])
+        #if bestscore == 0:
+        #    return -1
         return bestmove
 else:
     def find_best_move(m):
@@ -79,8 +79,8 @@ def rungame(args):
 
     ctrl = BrowserRemoteControl(port)
     # Use Keyboard2048Control if Fast2048Control doesn't seem to be working.
-    gamectrl = Fast2048Control(ctrl)
-    # gamectrl = Keyboard2048Control(ctrl)
+    # gamectrl = Fast2048Control(ctrl)
+    gamectrl = Keyboard2048Control(ctrl)
 
     moveno = 0
     start = time.time()
