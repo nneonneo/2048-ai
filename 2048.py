@@ -82,7 +82,7 @@ def movename(move):
     return ['up', 'down', 'left', 'right'][move]
 
 def rungame(args):
-    from gamectrl import BrowserRemoteControl, Fast2048Control, Keyboard2048Control
+    from gamectrl import BrowserRemoteControl, Fast2048Control, Keyboard2048Control, Hybrid2048Control
 
     if len(args) == 1:
         port = int(args[0])
@@ -91,8 +91,8 @@ def rungame(args):
 
     ctrl = BrowserRemoteControl(port)
     # Use Keyboard2048Control if Fast2048Control doesn't seem to be working.
-    gamectrl = Fast2048Control(ctrl)
-    # gamectrl = Keyboard2048Control(ctrl)
+    # gamectrl = Fast2048Control(ctrl)
+    gamectrl = Hybrid2048Control(ctrl)
 
     if gamectrl.get_status() == 'ended':
         gamectrl.restart_game()

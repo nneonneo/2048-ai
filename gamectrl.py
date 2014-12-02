@@ -176,3 +176,14 @@ class Keyboard2048Control(Generic2048Control):
         time.sleep(0.01)
         self.send_key_event('keyup', key)
         time.sleep(0.05)
+
+class Hybrid2048Control(Fast2048Control, Keyboard2048Control):
+    ''' Control 2048 by hooking the GameManager and using keyboard inputs.
+
+    This is safe and fast, and correctly generates keyboard events for compatibility.
+    '''
+
+    setup = Fast2048Control.setup
+    get_score = Fast2048Control.get_score
+    get_board = Fast2048Control.get_board
+    execute_move = Keyboard2048Control.execute_move
