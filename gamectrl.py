@@ -99,19 +99,21 @@ class Fast2048Control(Generic2048Control):
         grid = self.execute('GameManager._instance.grid')
 
         board = [[0]*4 for _ in range(4)]
-        for row in grid['cells']:
-            for cell in row:
-                if cell is None:
-                    continue
-                pos = cell['x'], cell['y']
-                tval = cell['value']
-                board[pos[1]][pos[0]] = int(round(math.log(tval, 2)))
+        for col in grid['cells']:
+            for row in col:
+                for beam in row:
+                    for cell in beam:
+                        if cell is None:
+                            continue
+                        pos = cell['z'] * 2 + cell['x'], cell['w'] * 2 + cell['y']
+                        tval = cell['value']
+                        board[pos[1]][pos[0]] = int(round(math.log(tval, 2)))
 
         return board
 
     def execute_move(self, move):
         # We use UDLR ordering; 2048 uses URDL ordering
-        move = [0, 2, 3, 1][move]
+        move = [0, 2, 3, 1, 4, 6, 7, 5][move]
         self.execute('GameManager._instance.move(%d)' % move)
 
 class Keyboard2048Control(Generic2048Control):
@@ -163,15 +165,15 @@ class Keyboard2048Control(Generic2048Control):
                 m = re.match(r'^tile-(\d+)$', k)
                 if m:
                     tval = int(m.group(1))
-                m = re.match(r'^tile-position-(\d+)-(\d+)$', k)
+                m = re.match(r'^tile-position-(\d+)-(\d+)-(\d+)-(\d+)$', k)
                 if m:
-                    pos = int(m.group(1)), int(m.group(2))
-            board[pos[1]-1][pos[0]-1] = int(round(math.log(tval, 2)))
+                    pos = (int(m.group(3))-1)*2 + int(m.group(1))-1, (int(m.group(4))-1)*2 + int(m.group(2))-1
+            board[pos[1]][pos[0]] = int(round(math.log(tval, 2)))
 
         return board
 
     def execute_move(self, move):
-        key = [38, 40, 37, 39][move]
+        key = [38, 40, 37, 39, 87, 83, 65, 68][move]
         self.send_key_event('keydown', key)
         time.sleep(0.01)
         self.send_key_event('keyup', key)

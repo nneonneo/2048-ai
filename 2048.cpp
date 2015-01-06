@@ -75,13 +75,15 @@ static row_t row_left_table [65536];
 static row_t row_right_table[65536];
 static board_t col_up_table[65536];
 static board_t col_down_table[65536];
+static row_t row_hleft_table [65536];
+static row_t row_hright_table[65536];
+static board_t col_hup_table[65536];
+static board_t col_hdown_table[65536];
 static float heur_score_table[65536];
 static float score_table[65536];
 
 // Heuristic scoring settings
 static const float SCORE_LOST_PENALTY = 200000.0f;
-static const float SCORE_MONOTONICITY_POWER = 4.0f;
-static const float SCORE_MONOTONICITY_WEIGHT = 47.0f;
 static const float SCORE_SUM_POWER = 3.5f;
 static const float SCORE_SUM_WEIGHT = 11.0f;
 static const float SCORE_MERGES_WEIGHT = 700.0f;
@@ -90,6 +92,12 @@ static const float SCORE_EMPTY_WEIGHT = 270.0f;
 void init_tables() {
     for (unsigned row = 0; row < 65536; ++row) {
         unsigned line[4] = {
+                (row >>  0) & 0xf,
+                (row >>  4) & 0xf,
+                (row >>  8) & 0xf,
+                (row >> 12) & 0xf
+        };
+        unsigned hline[4] = {
                 (row >>  0) & 0xf,
                 (row >>  4) & 0xf,
                 (row >>  8) & 0xf,
@@ -113,113 +121,77 @@ void init_tables() {
         int empty = 0;
         int merges = 0;
 
-        int prev = 0;
-        int counter = 0;
         for (int i = 0; i < 4; ++i) {
             int rank = line[i];
             sum += pow(rank, SCORE_SUM_POWER);
             if (rank == 0) {
                 empty++;
-            } else {
-                if (prev == rank) {
-                    counter++;
-                } else if (counter > 0) {
-                    merges += 1 + counter;
-                    counter = 0;
-                }
-                prev = rank;
             }
         }
-        if (counter > 0) {
-            merges += 1 + counter;
-        }
-
-        float monotonicity_left = 0;
-        float monotonicity_right = 0;
-        for (int i = 1; i < 4; ++i) {
-            if (line[i-1] > line[i]) {
-                monotonicity_left += pow(line[i-1], SCORE_MONOTONICITY_POWER) - pow(line[i], SCORE_MONOTONICITY_POWER);
-            } else {
-                monotonicity_right += pow(line[i], SCORE_MONOTONICITY_POWER) - pow(line[i-1], SCORE_MONOTONICITY_POWER);
-            }
-        }
+        if(line[0] && line[0] == line[1]) merges += 2;
+        if(line[0] && line[0] == line[2]) merges += 2;
+        if(line[3] && line[1] == line[3]) merges += 2;
+        if(line[3] && line[2] == line[3]) merges += 2;
 
         heur_score_table[row] = SCORE_LOST_PENALTY +
             SCORE_EMPTY_WEIGHT * empty +
             SCORE_MERGES_WEIGHT * merges -
-            SCORE_MONOTONICITY_WEIGHT * std::min(monotonicity_left, monotonicity_right) -
             SCORE_SUM_WEIGHT * sum;
 
-        // execute a move to the left
-        for (int i = 0; i < 3; ++i) {
-            int j;
-            for (j = i + 1; j < 4; ++j) {
-                if (line[j] != 0) break;
-            }
-            if (j == 4) break; // no more tiles to the right
-
-            if (line[i] == 0) {
-                line[i] = line[j];
-                line[j] = 0;
-                i--; // retry this entry
-            } else if (line[i] == line[j]) {
-                if(line[i] != 0xf) {
-                    /* Pretend that 32768 + 32768 = 32768 (representational limit). */
-                    line[i]++;
-                }
-                line[j] = 0;
-            }
-        }
+        // execute moves to the left
+#define MERGE_PAIR(line,i,j) do { \
+            if(line[i] == 0) { line[i] = line[j]; line[j] = 0; } \
+            else if(line[i] == line[j]) { \
+                if(line[i] != 0xf) line[i]++; \
+                line[j] = 0; \
+            } \
+        } while(0)
+        MERGE_PAIR(line,0,1);
+        MERGE_PAIR(line,2,3);
+        MERGE_PAIR(hline,0,2);
+        MERGE_PAIR(hline,1,3);
+#undef MERGE_PAIR
 
         row_t result = (line[0] <<  0) |
                        (line[1] <<  4) |
                        (line[2] <<  8) |
                        (line[3] << 12);
+        row_t hresult =(hline[0] <<  0) |
+                       (hline[1] <<  4) |
+                       (hline[2] <<  8) |
+                       (hline[3] << 12);
+
         row_t rev_result = reverse_row(result);
+        row_t rev_hresult = reverse_row(hresult);
         unsigned rev_row = reverse_row(row);
 
         row_left_table [    row] =                row  ^                result;
         row_right_table[rev_row] =            rev_row  ^            rev_result;
         col_up_table   [    row] = unpack_col(    row) ^ unpack_col(    result);
         col_down_table [rev_row] = unpack_col(rev_row) ^ unpack_col(rev_result);
+        row_hleft_table [    row] =                row  ^                hresult;
+        row_hright_table[rev_row] =            rev_row  ^            rev_hresult;
+        col_hup_table   [    row] = unpack_col(    row) ^ unpack_col(    hresult);
+        col_hdown_table [rev_row] = unpack_col(rev_row) ^ unpack_col(rev_hresult);
     }
 }
 
-static inline board_t execute_move_0(board_t board) {
+static inline board_t execute_col_move(board_t board, const board_t *table) {
     board_t ret = board;
     board_t t = transpose(board);
-    ret ^= col_up_table[(t >>  0) & ROW_MASK] <<  0;
-    ret ^= col_up_table[(t >> 16) & ROW_MASK] <<  4;
-    ret ^= col_up_table[(t >> 32) & ROW_MASK] <<  8;
-    ret ^= col_up_table[(t >> 48) & ROW_MASK] << 12;
+    ret ^= table[(t >>  0) & ROW_MASK] <<  0;
+    ret ^= table[(t >> 16) & ROW_MASK] <<  4;
+    ret ^= table[(t >> 32) & ROW_MASK] <<  8;
+    ret ^= table[(t >> 48) & ROW_MASK] << 12;
     return ret;
 }
 
-static inline board_t execute_move_1(board_t board) {
+static inline board_t execute_row_move(board_t board, const row_t *table) {
     board_t ret = board;
-    board_t t = transpose(board);
-    ret ^= col_down_table[(t >>  0) & ROW_MASK] <<  0;
-    ret ^= col_down_table[(t >> 16) & ROW_MASK] <<  4;
-    ret ^= col_down_table[(t >> 32) & ROW_MASK] <<  8;
-    ret ^= col_down_table[(t >> 48) & ROW_MASK] << 12;
-    return ret;
-}
-
-static inline board_t execute_move_2(board_t board) {
-    board_t ret = board;
-    ret ^= board_t(row_left_table[(board >>  0) & ROW_MASK]) <<  0;
-    ret ^= board_t(row_left_table[(board >> 16) & ROW_MASK]) << 16;
-    ret ^= board_t(row_left_table[(board >> 32) & ROW_MASK]) << 32;
-    ret ^= board_t(row_left_table[(board >> 48) & ROW_MASK]) << 48;
-    return ret;
-}
-
-static inline board_t execute_move_3(board_t board) {
-    board_t ret = board;
-    ret ^= board_t(row_right_table[(board >>  0) & ROW_MASK]) <<  0;
-    ret ^= board_t(row_right_table[(board >> 16) & ROW_MASK]) << 16;
-    ret ^= board_t(row_right_table[(board >> 32) & ROW_MASK]) << 32;
-    ret ^= board_t(row_right_table[(board >> 48) & ROW_MASK]) << 48;
+    ret ^= board_t(table[(board >>  0) & ROW_MASK]) <<  0;
+    ret ^= board_t(table[(board >> 16) & ROW_MASK]) << 16;
+    ret ^= board_t(table[(board >> 32) & ROW_MASK]) << 32;
+    ret ^= board_t(table[(board >> 48) & ROW_MASK]) << 48;
     return ret;
 }
 
@@ -227,13 +199,21 @@ static inline board_t execute_move_3(board_t board) {
 static inline board_t execute_move(int move, board_t board) {
     switch(move) {
     case 0: // up
-        return execute_move_0(board);
+        return execute_col_move(board, col_up_table);
     case 1: // down
-        return execute_move_1(board);
+        return execute_col_move(board, col_down_table);
     case 2: // left
-        return execute_move_2(board);
+        return execute_row_move(board, row_left_table);
     case 3: // right
-        return execute_move_3(board);
+        return execute_row_move(board, row_right_table);
+    case 4: // hyper-up
+        return execute_col_move(board, col_hup_table);
+    case 5: // hyper-down
+        return execute_col_move(board, col_hdown_table);
+    case 6: // hyper-left
+        return execute_row_move(board, row_hleft_table);
+    case 7: // hyper-right
+        return execute_row_move(board, row_hright_table);
     default:
         return ~0ULL;
     }
@@ -352,7 +332,7 @@ static float score_tilechoose_node(eval_state &state, board_t board, float cprob
 static float score_move_node(eval_state &state, board_t board, float cprob) {
     float best = 0.0f;
     state.curdepth++;
-    for (int move = 0; move < 4; ++move) {
+    for (int move = 0; move < 8; ++move) {
         board_t newboard = execute_move(move, board);
         state.moves_evaled++;
 
@@ -380,7 +360,7 @@ float score_toplevel_move(board_t board, int move) {
     struct timeval start, finish;
     double elapsed;
     eval_state state;
-    state.depth_limit = std::max(3, count_distinct_tiles(board) - 2);
+    state.depth_limit = std::max(3, count_distinct_tiles(board) - 4);
 
     gettimeofday(&start, NULL);
     res = _score_toplevel_move(state, board, move);
@@ -404,7 +384,7 @@ int find_best_move(board_t board) {
     print_board(board);
     printf("Current scores: heur %.0f, actual %.0f\n", score_heur_board(board), score_board(board));
 
-    for(move=0; move<4; move++) {
+    for(move=0; move<8; move++) {
         float res = score_toplevel_move(board, move);
 
         if(res > best) {
@@ -423,9 +403,9 @@ int ask_for_move(board_t board) {
 
     print_board(board);
 
-    for(move=0; move<4; move++) {
+    for(move=0; move<8; move++) {
         if(execute_move(move, board) != board)
-            *validpos++ = "UDLR"[move];
+            *validpos++ = "udlrUDLR"[move];
     }
     *validpos = 0;
     if(validpos == validstr)
@@ -433,19 +413,19 @@ int ask_for_move(board_t board) {
 
     while(1) {
         char movestr[64];
-        const char *allmoves = "UDLR";
+        const char *allmoves = "udlrUDLR";
 
         printf("Move [%s]? ", validstr);
 
         if(!fgets(movestr, sizeof(movestr)-1, stdin))
             return -1;
 
-        if(!strchr(validstr, toupper(movestr[0]))) {
+        if(!strchr(validstr, movestr[0])) {
             printf("Invalid move.\n");
             continue;
         }
 
-        return strchr(allmoves, toupper(movestr[0])) - allmoves;
+        return strchr(allmoves, movestr[0]) - allmoves;
     }
 }
 
@@ -484,11 +464,11 @@ void play_game(get_move_func_t get_move) {
         int move;
         board_t newboard;
 
-        for(move = 0; move < 4; move++) {
+        for(move = 0; move < 8; move++) {
             if(execute_move(move, board) != board)
                 break;
         }
-        if(move == 4)
+        if(move == 8)
             break; // no legal moves
 
         printf("\nMove #%d, current score=%.0f\n", ++moveno, score_board(board) - scorepenalty);

@@ -59,7 +59,7 @@ def to_score(m):
 
 if MULTITHREAD:
     from multiprocessing.pool import ThreadPool
-    pool = ThreadPool(4)
+    pool = ThreadPool(8)
     def score_toplevel_move(args):
         return ailib.score_toplevel_move(*args)
 
@@ -68,7 +68,7 @@ if MULTITHREAD:
 
         print_board(to_val(m))
 
-        scores = pool.map(score_toplevel_move, [(board, move) for move in range(4)])
+        scores = pool.map(score_toplevel_move, [(board, move) for move in range(8)])
         bestmove, bestscore = max(enumerate(scores), key=lambda x:x[1])
         if bestscore == 0:
             return -1
@@ -79,7 +79,7 @@ else:
         return ailib.find_best_move(board)
 
 def movename(move):
-    return ['up', 'down', 'left', 'right'][move]
+    return ['up', 'down', 'left', 'right', 'hyper-up', 'hyper-down', 'hyper-left', 'hyper-right'][move]
 
 def rungame(args):
     from gamectrl import BrowserRemoteControl, Fast2048Control, Keyboard2048Control, Hybrid2048Control
