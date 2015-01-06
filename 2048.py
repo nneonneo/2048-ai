@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-''' Help the user achieve a high score in a real game of threes by using a move searcher. '''
+''' Help the user achieve a high score in a real game of 2048 by using a move searcher. '''
 
 from __future__ import print_function
 import ctypes
