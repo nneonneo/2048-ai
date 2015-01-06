@@ -86,6 +86,7 @@ static const float SCORE_SUM_POWER = 3.5f;
 static const float SCORE_SUM_WEIGHT = 11.0f;
 static const float SCORE_MERGES_WEIGHT = 700.0f;
 static const float SCORE_EMPTY_WEIGHT = 270.0f;
+#define IMMOVABLE 0xf
 
 void init_tables() {
     for (unsigned row = 0; row < 65536; ++row) {
@@ -100,7 +101,7 @@ void init_tables() {
         float score = 0.0f;
         for (int i = 0; i < 4; ++i) {
             int rank = line[i];
-            if (rank >= 2) {
+            if (rank >= 2 && rank != IMMOVABLE) {
                 // the score is the total sum of the tile and all intermediate merged tiles
                 score += (rank - 1) * (1 << rank);
             }
@@ -117,6 +118,11 @@ void init_tables() {
         int counter = 0;
         for (int i = 0; i < 4; ++i) {
             int rank = line[i];
+            if (rank == IMMOVABLE) {
+                prev = IMMOVABLE;
+                counter = 0;
+                continue;
+            }
             sum += pow(rank, SCORE_SUM_POWER);
             if (rank == 0) {
                 empty++;
@@ -137,6 +143,8 @@ void init_tables() {
         float monotonicity_left = 0;
         float monotonicity_right = 0;
         for (int i = 1; i < 4; ++i) {
+            if (line[i-1] == IMMOVABLE || line[i] == IMMOVABLE)
+                continue;
             if (line[i-1] > line[i]) {
                 monotonicity_left += pow(line[i-1], SCORE_MONOTONICITY_POWER) - pow(line[i], SCORE_MONOTONICITY_POWER);
             } else {
@@ -157,14 +165,14 @@ void init_tables() {
                 if (line[j] != 0) break;
             }
             if (j == 4) break; // no more tiles to the right
-
+            if (line[j] == IMMOVABLE) continue; // immovable tile
             if (line[i] == 0) {
                 line[i] = line[j];
                 line[j] = 0;
                 i--; // retry this entry
             } else if (line[i] == line[j]) {
-                if(line[i] != 0xf) {
-                    /* Pretend that 32768 + 32768 = 32768 (representational limit). */
+                if(line[i] != 0xe) {
+                    /* Pretend that 16384+16384=32768 (representational limit). */
                     line[i]++;
                 }
                 line[j] = 0;
@@ -242,7 +250,8 @@ static inline board_t execute_move(int move, board_t board) {
 static inline int get_max_rank(board_t board) {
     int maxrank = 0;
     while (board) {
-        maxrank = std::max(maxrank, int(board & 0xf));
+        if((board & 0xf) != IMMOVABLE)
+            maxrank = std::max(maxrank, int(board & 0xf));
         board >>= 4;
     }
     return maxrank;
@@ -472,6 +481,7 @@ static board_t insert_tile_rand(board_t board, board_t tile) {
 
 static board_t initial_board() {
     board_t board = draw_tile() << (4 * unif_random(16));
+    board |= 0xffffffff00000000ULL; // fill bottom two rows with immovable tiles
     return insert_tile_rand(board, draw_tile());
 }
 
