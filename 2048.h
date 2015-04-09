@@ -17,8 +17,8 @@ typedef uint16_t row_t;
 
 //store the depth at which the heuristic was recorded as well as the actual heuristic
 struct trans_table_entry_t{
-	uint8_t depth;
-	float heuristic;
+    uint8_t depth;
+    float heuristic;
 };
 
 static const board_t ROW_MASK = 0xFFFFULL;

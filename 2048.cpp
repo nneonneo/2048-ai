@@ -37,32 +37,32 @@
 //   cdef       37bf
 static inline board_t transpose(board_t x)
 {
-	board_t a1 = x & 0xF0F00F0FF0F00F0FULL;
-	board_t a2 = x & 0x0000F0F00000F0F0ULL;
-	board_t a3 = x & 0x0F0F00000F0F0000ULL;
-	board_t a = a1 | (a2 << 12) | (a3 >> 12);
-	board_t b1 = a & 0xFF00FF0000FF00FFULL;
-	board_t b2 = a & 0x00FF00FF00000000ULL;
-	board_t b3 = a & 0x00000000FF00FF00ULL;
-	return b1 | (b2 >> 24) | (b3 << 24);
+    board_t a1 = x & 0xF0F00F0FF0F00F0FULL;
+    board_t a2 = x & 0x0000F0F00000F0F0ULL;
+    board_t a3 = x & 0x0F0F00000F0F0000ULL;
+    board_t a = a1 | (a2 << 12) | (a3 >> 12);
+    board_t b1 = a & 0xFF00FF0000FF00FFULL;
+    board_t b2 = a & 0x00FF00FF00000000ULL;
+    board_t b3 = a & 0x00000000FF00FF00ULL;
+    return b1 | (b2 >> 24) | (b3 << 24);
 }
 
 // Count the number of empty positions (= zero nibbles) in a board.
 // Precondition: the board cannot be fully empty.
 static int count_empty(board_t x)
 {
-	x |= (x >> 2) & 0x3333333333333333ULL;
-	x |= (x >> 1);
-	x = ~x & 0x1111111111111111ULL;
-	// At this point each nibble is:
-	//  0 if the original nibble was non-zero
-	//  1 if the original nibble was zero
-	// Next sum them all
-	x += x >> 32;
-	x += x >> 16;
-	x += x >>  8;
-	x += x >>  4; // this can overflow to the next nibble if there were 16 empty positions
-	return x & 0xf;
+    x |= (x >> 2) & 0x3333333333333333ULL;
+    x |= (x >> 1);
+    x = ~x & 0x1111111111111111ULL;
+    // At this point each nibble is:
+    //  0 if the original nibble was non-zero
+    //  1 if the original nibble was zero
+    // Next sum them all
+    x += x >> 32;
+    x += x >> 16;
+    x += x >>  8;
+    x += x >>  4; // this can overflow to the next nibble if there were 16 empty positions
+    return x & 0xf;
 }
 
 /* We can perform state lookups one row at a time by using arrays with 65536 entries. */
@@ -320,18 +320,18 @@ static float score_tilechoose_node(eval_state &state, board_t board, float cprob
     if (state.curdepth < CACHE_DEPTH_LIMIT) {
         const trans_table_t::iterator &i = state.trans_table.find(board);
         if (i != state.trans_table.end()) {
-			trans_table_entry_t entry = i->second;
-			/*
-			return heuristic from transposition table only if it means that
-			the node will have been evaluated to a minimum depth of state.depth_limit.
-			This will result in slightly fewer cache hits, but should not impact the
-			strength of the ai negatively.
-			*/
-			if(entry.depth <= state.curdepth)
-			{
+            trans_table_entry_t entry = i->second;
+            /*
+            return heuristic from transposition table only if it means that
+            the node will have been evaluated to a minimum depth of state.depth_limit.
+            This will result in slightly fewer cache hits, but should not impact the
+            strength of the ai negatively.
+            */
+            if(entry.depth <= state.curdepth)
+            {
                 state.cachehits++;
-				return entry.heuristic;
-			}
+                return entry.heuristic;
+            }
         }
     }
 
@@ -352,8 +352,8 @@ static float score_tilechoose_node(eval_state &state, board_t board, float cprob
     res = res / num_open;
 
     if (state.curdepth < CACHE_DEPTH_LIMIT) {
-		trans_table_entry_t entry = {state.curdepth, res};
-		state.trans_table[board] = entry;
+        trans_table_entry_t entry = {state.curdepth, res};
+        state.trans_table[board] = entry;
     }
 
     return res;
