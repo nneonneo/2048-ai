@@ -12,13 +12,13 @@
 #include "config.h"
 #if defined(HAVE_UNORDERED_MAP)
     #include <unordered_map>
-    typedef std::unordered_map<board_t, float> trans_table_t;
+    typedef std::unordered_map<board_t, trans_table_entry_t> trans_table_t;
 #elif defined(HAVE_TR1_UNORDERED_MAP)
     #include <tr1/unordered_map>
-    typedef std::tr1::unordered_map<board_t, float> trans_table_t;
+    typedef std::tr1::unordered_map<board_t, trans_table_entry_t> trans_table_t;
 #else
     #include <map>
-    typedef std::map<board_t, float> trans_table_t;
+    typedef std::map<board_t, trans_table_entry_t> trans_table_t;
 #endif
 
 /* MSVC compatibility: undefine max and min macros */
@@ -310,19 +310,28 @@ static float score_board(board_t board) {
 // cprob: cumulative probability
 // don't recurse into a node with a cprob less than this threshold
 static const float CPROB_THRESH_BASE = 0.0001f;
-static const int CACHE_DEPTH_LIMIT  = 6;
+static const int CACHE_DEPTH_LIMIT  = 15;
 
 static float score_tilechoose_node(eval_state &state, board_t board, float cprob) {
     if (cprob < CPROB_THRESH_BASE || state.curdepth >= state.depth_limit) {
         state.maxdepth = std::max(state.curdepth, state.maxdepth);
         return score_heur_board(board);
     }
-
     if (state.curdepth < CACHE_DEPTH_LIMIT) {
         const trans_table_t::iterator &i = state.trans_table.find(board);
         if (i != state.trans_table.end()) {
-            state.cachehits++;
-            return i->second;
+			trans_table_entry_t entry = i->second;
+			/*
+			return heuristic from transposition table only if it means that
+			the node will have been evaluated to a minimum depth of state.depth_limit.
+			This will result in slightly fewer cache hits, but should not impact the
+			strength of the ai negatively.
+			*/
+			if(entry.depth <= state.curdepth)
+			{
+                state.cachehits++;
+				return entry.heuristic;
+			}
         }
     }
 
@@ -343,7 +352,8 @@ static float score_tilechoose_node(eval_state &state, board_t board, float cprob
     res = res / num_open;
 
     if (state.curdepth < CACHE_DEPTH_LIMIT) {
-        state.trans_table[board] = res;
+		trans_table_entry_t entry = {state.curdepth, res};
+		state.trans_table[board] = entry;
     }
 
     return res;
