@@ -15,6 +15,12 @@
 typedef uint64_t board_t;
 typedef uint16_t row_t;
 
+//store the depth at which the heuristic was recorded as well as the actual heuristic
+struct trans_table_entry_t{
+    uint8_t depth;
+    float heuristic;
+};
+
 static const board_t ROW_MASK = 0xFFFFULL;
 static const board_t COL_MASK = 0x000F000F000F000FULL;
 
