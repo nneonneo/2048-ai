@@ -352,7 +352,7 @@ static float score_tilechoose_node(eval_state &state, board_t board, float cprob
     res = res / num_open;
 
     if (state.curdepth < CACHE_DEPTH_LIMIT) {
-        trans_table_entry_t entry = {state.curdepth, res};
+        trans_table_entry_t entry = {static_cast<uint8_t>(state.curdepth), res};
         state.trans_table[board] = entry;
     }
 
