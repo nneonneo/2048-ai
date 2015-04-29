@@ -26,6 +26,6 @@ AC_TYPE_UINT16_T
 AC_TYPE_UINT64_T
 
 # Checks for library functions.
-AC_CHECK_FUNCS([gettimeofday memset strchr arc4random_uniform drand48])
+AC_CHECK_FUNCS([gettimeofday strchr arc4random_uniform drand48])
 
 AC_OUTPUT(Makefile)
