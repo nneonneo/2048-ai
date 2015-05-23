@@ -1,8 +1,14 @@
 /* config.h.  Default, conservative configuration for configure-less platforms like MSVC on Windows.  */
 /* config.h.in.  Generated from configure.ac by autoheader.  */
 
+/* Define to 1 if you have the `arc4random_uniform' function. */
+#undef HAVE_ARC4RANDOM_UNIFORM
+
 /* define if the compiler supports basic C++11 syntax */
 #undef HAVE_CXX11
+
+/* Define to 1 if you have the `drand48' function. */
+#undef HAVE_DRAND48
 
 /* Define to 1 if you have the <fcntl.h> header file. */
 #undef HAVE_FCNTL_H
@@ -14,9 +20,6 @@
 #undef HAVE_INTTYPES_H
 
 /* Define to 1 if you have the <memory.h> header file. */
-#undef HAVE_MEMORY_H
-
-/* Define to 1 if you have the `memset' function. */
 #undef HAVE_MEMORY_H
 
 /* Define to 1 if you have the <stdint.h> header file. */
@@ -56,10 +59,10 @@
 #define PACKAGE_BUGREPORT "https://github.com/nneonneo/2048-ai/issues"
 
 /* Define to the full name of this package. */
-#define PACKAGE_NAME "2048-AI"
+#define PACKAGE_NAME "2048 AI"
 
 /* Define to the full name and version of this package. */
-#define PACKAGE_STRING "2048-AI 0.1"
+#define PACKAGE_STRING "2048 AI 1.0"
 
 /* Define to the one symbol short name of this package. */
 #define PACKAGE_TARNAME "2048-ai"
@@ -68,7 +71,7 @@
 #define PACKAGE_URL "https://github.com/nneonneo/2048-ai"
 
 /* Define to the version of this package. */
-#define PACKAGE_VERSION "0.1"
+#define PACKAGE_VERSION "1.0"
 
 /* Define to 1 if you have the ANSI C header files. */
 #define STDC_HEADERS 1

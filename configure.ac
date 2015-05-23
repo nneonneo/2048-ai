@@ -4,7 +4,7 @@
 AC_CONFIG_MACRO_DIR([m4])
 
 AC_PREREQ([2.69])
-AC_INIT([2048-AI], [0.1], [https://github.com/nneonneo/2048-ai/issues])
+AC_INIT([2048 AI], [1.0], [https://github.com/nneonneo/2048-ai/issues], [2048-ai], [https://github.com/nneonneo/2048-ai])
 AC_CONFIG_SRCDIR([2048.cpp])
 AC_CONFIG_HEADERS([config.h])
 
@@ -26,6 +26,6 @@ AC_TYPE_UINT16_T
 AC_TYPE_UINT64_T
 
 # Checks for library functions.
-AC_CHECK_FUNCS([gettimeofday memset strchr arc4random_uniform drand48])
+AC_CHECK_FUNCS([gettimeofday strchr arc4random_uniform drand48])
 
 AC_OUTPUT(Makefile)

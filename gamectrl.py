@@ -92,6 +92,14 @@ class Fast2048Control(Generic2048Control):
 
         self.execute('GameManager.prototype.isGameTerminated = _func_tmp;')
 
+    def get_status(self):
+        ''' Check if the game is in an unusual state. '''
+        return self.execute('''
+            if(GameManager._instance.over) {"ended"}
+            else if(GameManager._instance.won && !GameManager._instance.keepPlaying) {"won"}
+            else {"running"}
+            ''')
+
     def get_score(self):
         return self.execute('GameManager._instance.score')
 
@@ -186,6 +194,7 @@ class Hybrid2048Control(Fast2048Control, Keyboard2048Control):
     '''
 
     setup = Fast2048Control.setup
+    get_status = Keyboard2048Control.get_status
     get_score = Fast2048Control.get_score
     get_board = Fast2048Control.get_board
     execute_move = Keyboard2048Control.execute_move
