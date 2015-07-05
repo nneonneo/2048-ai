@@ -1,32 +1,8 @@
 # -*- coding: utf-8 -*-
-import json
 import math
 import re
-import socket
 import time
-
-class BrowserRemoteControl(object):
-    ''' Interact with a web browser running the Remote Control extension. '''
-    def __init__(self, port):
-        self.sock = socket.socket()
-        self.sock.connect(('localhost', port))
-
-    def execute(self, cmd):
-        msg = cmd.replace('\n', ' ') + '\r\n'
-        self.sock.send(msg.encode('utf8'))
-        ret = []
-        while True:
-            chunk = self.sock.recv(4096)
-            ret.append(chunk)
-            if b'\n' in chunk:
-                break
-        res = json.loads(b''.join(ret).decode('utf8'))
-        if 'error' in res:
-            raise Exception(res['error'])
-        elif not res:
-            return None
-        else:
-            return res['result']
+import json
 
 class Generic2048Control(object):
     def __init__(self, ctrl):
@@ -62,17 +38,22 @@ class Generic2048Control(object):
         self.execute('document.querySelector(".keep-playing-button").click();')
 
     def send_key_event(self, action, key):
+        # Use generic events for compatibility with Chrome, which (for inexplicable reasons) doesn't support setting keyCode on KeyboardEvent objects.
+        # See http://stackoverflow.com/questions/8942678/keyboardevent-in-chrome-keycode-is-0.
         return self.execute('''
-            var keyboardEvent = document.createEvent("KeyboardEvent");
-            var initMethod = typeof keyboardEvent.initKeyboardEvent !== 'undefined' ? "initKeyboardEvent" : "initKeyEvent";
-            keyboardEvent[initMethod]("%s", true, true, window, false, false, false, false, %d, 0);
-            (document.body || document).dispatchEvent(keyboardEvent);
-            ''' % (action, key))
+            var keyboardEvent = document.createEventObject ? document.createEventObject() : document.createEvent("Events");
+            if(keyboardEvent.initEvent)
+                keyboardEvent.initEvent("%(action)s", true, true);
+            keyboardEvent.keyCode = %(key)s;
+            keyboardEvent.which = %(key)s;
+            var element = document.body || document;
+            element.dispatchEvent ? element.dispatchEvent(keyboardEvent) : element.fireEvent("on%(action)s", keyboardEvent);
+            ''' % locals())
 
 class Fast2048Control(Generic2048Control):
     ''' Control 2048 by hooking the GameManager and executing its move() function.
 
-    This is both safer and faster than the keyboard approach, but it is more hackish. '''
+    This is both safer and faster than the keyboard approach, but it is less compatible with clones. '''
 
     def setup(self):
         # Obtain the GameManager instance by triggering a fake restart.
@@ -104,7 +85,8 @@ class Fast2048Control(Generic2048Control):
         return self.execute('GameManager._instance.score')
 
     def get_board(self):
-        grid = self.execute('GameManager._instance.grid')
+        # Chrome refuses to serialize the Grid object directly through the debugger.
+        grid = json.loads(self.execute('JSON.stringify(GameManager._instance.grid)'))
 
         board = [[0]*4 for _ in range(4)]
         for row in grid['cells']:
