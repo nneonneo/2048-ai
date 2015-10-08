@@ -29,7 +29,7 @@ static inline void print_board(board_t board) {
     for(i=0; i<4; i++) {
         for(j=0; j<4; j++) {
             uint8_t powerVal = (board) & 0xf;
-            printf("%*u ", 6, powerVal == 0 ? 0 : 2 << (powerVal - 1));
+            printf("%*u ", 6, powerVal == 0 ? 0 : 1 << powerVal);
             board >>= 4;
         }
         printf("\n");
