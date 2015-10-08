@@ -28,7 +28,8 @@ static inline void print_board(board_t board) {
     int i,j;
     for(i=0; i<4; i++) {
         for(j=0; j<4; j++) {
-            printf("%c", "0123456789abcdef"[(board)&0xf]);
+            uint8_t powerVal = (board) & 0xf;
+            printf("%6u", (powerVal == 0) ? 0 : 1 << powerVal);
             board >>= 4;
         }
         printf("\n");
