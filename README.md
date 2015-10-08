@@ -1,4 +1,4 @@
-AI for the [2048 game](http://gabrielecirulli.github.io/2048/). This uses *expectimax optimization*, along with a highly-efficient bitboard representation to search upwards of 10 million moves per second on recent hardware. Heuristics used include bonuses for empty squares and bonuses for placing large values near edges and corners.  
+AI for the [2048 4D game](http://huonw.github.io/2048-4D/). This uses *expectimax optimization*, along with a highly-efficient bitboard representation to search upwards of 10 million moves per second on recent hardware. Heuristics used include bonuses for empty squares and bonuses for placing large values near edges and corners.
 
 ## Building
 
@@ -34,6 +34,6 @@ Run `bin/2048` if you want to see the AI by itself in action.
 
 Install [Remote Control for Firefox](https://github.com/nneonneo/FF-Remote-Control/raw/V_1.2/remote_control-1.2-fx.xpi).
 
-Open up the [2048 game](http://gabrielecirulli.github.io/2048/) or any compatible clone and start remote control.
+Open up the [2048 4D game](http://huonw.github.io/2048-4D/) and start remote control.
 
 Run `2048.py` and watch the game!
