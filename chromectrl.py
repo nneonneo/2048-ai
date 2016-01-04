@@ -23,7 +23,7 @@ class ChromeDebuggerControl(object):
         else:
             print "Select a page to attach to:"
             for i, page in enumerate(pages):
-                print "%d) %s" % (i+1, page['title'])
+                print "%d) %s" % (i+1, page['title'].encode('unicode_escape'))
             while 1:
                 try:
                     pageidx = int(raw_input("Selection? "))
