@@ -89,7 +89,7 @@ class ChromeDebuggerControl(object):
 
     def execute(self, cmd):
         resp = self._send_cmd('Runtime.evaluate', expression=cmd)
-        if resp['wasThrown']:
+        if 'exceptionDetails' in resp:
             raise Exception("JS evaluation threw an error: %s" % resp['result']['description'])
         result = resp['result']
         if 'value' in result:
