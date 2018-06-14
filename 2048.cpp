@@ -21,7 +21,7 @@
     typedef std::map<board_t, trans_table_entry_t> trans_table_t;
 #endif
 
-/* MSVC compatibility: undefine max and min macros */
+/* MSVC 호환성: 최대 최소 매크로 정의 해제 */
 #if defined(max)
 #undef max
 #endif
@@ -30,7 +30,7 @@
 #undef min
 #endif
 
-// Transpose rows/columns in a board:
+// Transpose rows/columns in a board: 보드 내의 행과 열을 변환합니다.
 //   0123       048c
 //   4567  -->  159d
 //   89ab       26ae
@@ -47,29 +47,33 @@ static inline board_t transpose(board_t x)
     return b1 | (b2 >> 24) | (b3 << 24);
 }
 
-// Count the number of empty positions (= zero nibbles) in a board.
-// Precondition: the board cannot be fully empty.
+// Count the number of empty positions (= zero nibbles) in a board. 보드 안의 빈 영역을 카운트합니다. (0비트)
+// Precondition: the board cannot be fully empty. 전제: 보드는 완전히 빌 수 없습니다. (초기값으로 2타일을 반드시 하나 주기 때문이다)
+
 static int count_empty(board_t x)
 {
     x |= (x >> 2) & 0x3333333333333333ULL;
     x |= (x >> 1);
     x = ~x & 0x1111111111111111ULL;
-    // At this point each nibble is:
-    //  0 if the original nibble was non-zero
-    //  1 if the original nibble was zero
-    // Next sum them all
+    // At this point each nibble is: 이 지점에서 각각의 니블(4비트)는
+    //  0 if the original nibble was non-zero 0 만약 원 니블이 0이 아니라면
+    //  1 if the original nibble was zero 1 만약 원 니블이 0이라면
+    // Next sum them all 그 다음 합은 
     x += x >> 32;
     x += x >> 16;
     x += x >>  8;
-    x += x >>  4; // this can overflow to the next nibble if there were 16 empty positions
+    x += x >>  4; // this can overflow to the next nibble if there were 16 empty positions 그곳에 16개의 빈 포지션이 있다면, 이것은 다음 니블로 오버플로우 될 수 있습니다.
     return x & 0xf;
 }
 
-/* We can perform state lookups one row at a time by using arrays with 65536 entries. */
+/* We can perform state lookups one row at a time by using arrays with 65536 entries. 65536개의 항목이 있는 배열을 사용하여 한번에 하나의 행만 표시할 수 있습니다.*/
 
-/* Move tables. Each row or compressed column is mapped to (oldrow^newrow) assuming row/col 0.
+/* Move tables. Each row or compressed column is mapped to (oldrow^newrow) assuming row/col 0. 테이블을 이동합니다.
+각 행 또는 압축된 열은 가정된 행(이전 행,새로운 행 매핑됩니다.
  *
  * Thus, the value is 0 if there is no move, and otherwise equals a value that can easily be
+따라서 이동이 없는 경우 그 값은 0이며, 그렇지 않다면 그 값은 현재 보드 상태로 보드를 업데이트 하기 위해 쉽게 xor되는 값과 같다.
+동일하다. 은 쉽게 xor된다. 현재 보드 상태로. 보드를 업데이트하기 위해. 값과 같다.
  * xor'ed into the current board state to update the board. */
 static row_t row_left_table [65536];
 static row_t row_right_table[65536];
@@ -78,7 +82,7 @@ static board_t col_down_table[65536];
 static float heur_score_table[65536];
 static float score_table[65536];
 
-// Heuristic scoring settings
+// Heuristic scoring settings 휴리스틱 점수 세팅
 static const float SCORE_LOST_PENALTY = 200000.0f;
 static const float SCORE_MONOTONICITY_POWER = 4.0f;
 static const float SCORE_MONOTONICITY_WEIGHT = 47.0f;
@@ -96,19 +100,20 @@ void init_tables() {
                 (row >> 12) & 0xf
         };
 
-        // Score
+        // Score 점수
         float score = 0.0f;
         for (int i = 0; i < 4; ++i) {
             int rank = line[i];
             if (rank >= 2) {
                 // the score is the total sum of the tile and all intermediate merged tiles
+				// 점수는 타일의 총합이며, 모두 중간에 병합되었다.
                 score += (rank - 1) * (1 << rank);
             }
         }
         score_table[row] = score;
 
 
-        // Heuristic score
+        // Heuristic score 휴리스틱 점수 
         float sum = 0;
         int empty = 0;
         int merges = 0;
@@ -150,21 +155,21 @@ void init_tables() {
             SCORE_MONOTONICITY_WEIGHT * std::min(monotonicity_left, monotonicity_right) -
             SCORE_SUM_WEIGHT * sum;
 
-        // execute a move to the left
+        // execute a move to the left 왼쪽으로 이동 실행
         for (int i = 0; i < 3; ++i) {
             int j;
             for (j = i + 1; j < 4; ++j) {
                 if (line[j] != 0) break;
             }
-            if (j == 4) break; // no more tiles to the right
+            if (j == 4) break; // no more tiles to the right 더 이상 오른쪽에 타일이 없음.
 
             if (line[i] == 0) {
                 line[i] = line[j];
                 line[j] = 0;
-                i--; // retry this entry
+                i--; // retry this entry 이 항목을 다시 시도하시오.
             } else if (line[i] == line[j]) {
                 if(line[i] != 0xf) {
-                    /* Pretend that 32768 + 32768 = 32768 (representational limit). */
+                    /* Pretend that 32768 + 32768 = 32768 (representational limit). 32768+32768=32768로 가정합니다. (대표제한) */
                     line[i]++;
                 }
                 line[j] = 0;
@@ -223,7 +228,7 @@ static inline board_t execute_move_3(board_t board) {
     return ret;
 }
 
-/* Execute a move. */
+/* 이동 실행 */
 static inline board_t execute_move(int move, board_t board) {
     switch(move) {
     case 0: // up
@@ -255,7 +260,7 @@ static inline int count_distinct_tiles(board_t board) {
         board >>= 4;
     }
 
-    // Don't count empty tiles.
+    // Don't count empty tiles. 빈 타일 카운트 안함.
     bitset >>= 1;
 
     int count = 0;
@@ -266,10 +271,10 @@ static inline int count_distinct_tiles(board_t board) {
     return count;
 }
 
-/* Optimizing the game */
+/* Optimizing the game 게임 최적화 */
 
 struct eval_state {
-    trans_table_t trans_table; // transposition table, to cache previously-seen moves
+    trans_table_t trans_table; // transposition table, to cache previously-seen moves 이전에 취한 움직임을 은닉하는 전송테이블
     int maxdepth;
     int curdepth;
     int cachehits;
@@ -280,13 +285,13 @@ struct eval_state {
     }
 };
 
-// score a single board heuristically
+// score a single board heuristically 단일 보드에 휴리스틱적으로 점수를 매김
 static float score_heur_board(board_t board);
-// score a single board actually (adding in the score from spawned 4 tiles)
+// score a single board actually (adding in the score from spawned 4 tiles) 단일 보드에 사실적으로 점수를 매김
 static float score_board(board_t board);
-// score over all possible moves
+// score over all possible moves 가능한 움직임 전체를 점수매김
 static float score_move_node(eval_state &state, board_t board, float cprob);
-// score over all possible tile choices and placements
+// score over all possible tile choices and placements 가능한 모든 타일선택과 타일배치에 점수를 매김
 static float score_tilechoose_node(eval_state &state, board_t board, float cprob);
 
 
@@ -306,9 +311,10 @@ static float score_board(board_t board) {
     return score_helper(board, score_table);
 }
 
-// Statistics and controls
-// cprob: cumulative probability
-// don't recurse into a node with a cprob less than this threshold
+// Statistics and controls 통계 및 제어
+
+// cprob: cumulative probability  누적확률 (약어 풀이)
+// don't recurse into a node with a cprob less than this threshold 이 임계값보다 작은 노드에 다시 들어가지 않는다.(재귀되지 않는다)
 static const float CPROB_THRESH_BASE = 0.0001f;
 static const int CACHE_DEPTH_LIMIT  = 15;
 
@@ -322,10 +328,15 @@ static float score_tilechoose_node(eval_state &state, board_t board, float cprob
         if (i != state.trans_table.end()) {
             trans_table_entry_t entry = i->second;
             /*
+			
             return heuristic from transposition table only if it means that
             the node will have been evaluated to a minimum depth of state.depth_limit.
-            This will result in slightly fewer cache hits, but should not impact the
+            이것이 노드가 state.depth_limit의 최소 깊이로 평가된다는 것을 의미할 때만 이동테이블로부터 휴리스틱을 반환합니다.
+
+			This will result in slightly fewer cache hits, but should not impact the
             strength of the ai negatively.
+			이것은 캐시 적중 횟수를 약간 줄이지만, ai의 강도에 부정적인 영향을 미치지 않아야합니다.
+
             */
             if(entry.depth <= state.curdepth)
             {
@@ -376,7 +387,7 @@ static float score_move_node(eval_state &state, board_t board, float cprob) {
 }
 
 static float _score_toplevel_move(eval_state &state, board_t board, int move) {
-    //int maxrank = get_max_rank(board);
+    //int maxrank = get_max_rank(board); 
     board_t newboard = execute_move(move, board);
 
     if(board == newboard)
@@ -405,7 +416,7 @@ float score_toplevel_move(board_t board, int move) {
     return res;
 }
 
-/* Find the best move for a given board. */
+/* Find the best move for a given board. 주어진 보드에서 최적의 이동을 찾습니다. */
 int find_best_move(board_t board) {
     int move;
     float best = 0;
@@ -459,7 +470,7 @@ int ask_for_move(board_t board) {
     }
 }
 
-/* Playing the game */
+/* Playing the game 게임을 실행합니다. */
 static board_t draw_tile() {
     return (unif_random(10) < 9) ? 1 : 2;
 }
@@ -488,7 +499,7 @@ static board_t initial_board() {
 void play_game(get_move_func_t get_move) {
     board_t board = initial_board();
     int moveno = 0;
-    int scorepenalty = 0; // "penalty" for obtaining free 4 tiles
+    int scorepenalty = 0; // "penalty" for obtaining free 4 tiles 4개의 타일을 그냥 얻은 것에 대한 패널티
 
     while(1) {
         int move;
@@ -499,7 +510,7 @@ void play_game(get_move_func_t get_move) {
                 break;
         }
         if(move == 4)
-            break; // no legal moves
+            break; // no legal moves 합법적인 이동 없음. (더 이상 이동할 수 있는 타일이 없음)
 
         printf("\nMove #%d, current score=%.0f\n", ++moveno, score_board(board) - scorepenalty);
 
