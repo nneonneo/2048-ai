@@ -1,9 +1,21 @@
-import urllib, urllib2, json, threading, itertools
+from __future__ import print_function
+import json, threading, itertools
 
 try:
     import websocket
 except ImportError:
     websocket = None
+
+# Python 3 compatibility
+try:
+    from urllib2 import urlopen
+except ImportError:
+    from urllib.request import urlopen
+
+try:
+    input = raw_input
+except NameError:
+    pass
 
 class ChromeDebuggerControl(object):
     ''' Control Chrome using the debugging socket.
@@ -15,22 +27,25 @@ class ChromeDebuggerControl(object):
                                       "Please install it (pip install websocket-client) then try again.")
 
         # Obtain the list of pages
-        pages = json.loads(urllib2.urlopen('http://localhost:%d/json/list' % port).read())
+        pages = json.loads(urlopen('http://localhost:%d/json/list' % port).read())
         if len(pages) == 0:
             raise Exception("No pages to attach to!")
         elif len(pages) == 1:
             page = pages[0]
         else:
-            print "Select a page to attach to:"
+            print("Select a page to attach to:")
             for i, page in enumerate(pages):
-                print "%d) %s" % (i+1, page['title'].encode('unicode_escape'))
+                title = page['title'].encode('unicode_escape').decode('iso-8859-1')
+                if len(title) > 100:
+                    title = title[:100] + '...'
+                print("%d) %s" % (i+1, title))
             while 1:
                 try:
-                    pageidx = int(raw_input("Selection? "))
+                    pageidx = int(input("Selection? "))
                     page = pages[pageidx-1]
                     break
-                except Exception, e:
-                    print "Invalid selection:", e
+                except Exception as e:
+                    print("Invalid selection:", e)
 
         # Configure debugging websocket
         wsurl = page['webSocketDebuggerUrl']

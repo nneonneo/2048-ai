@@ -4,6 +4,12 @@ from queue import Queue
 import socket
 import threading
 
+# Python 3 compatibility
+try:
+    input = raw_input
+except NameError:
+    pass
+
 class FirefoxRemoteControl(object):
     ''' Interact with a web browser running the Remote Control extension. '''
     def __init__(self, port):
@@ -55,10 +61,13 @@ class FirefoxDebuggerControl(object):
         else:
             print("Select a page to attach to:")
             for i, page in enumerate(pages):
-                print("%d) %s" % (i+1, page['title'].encode('unicode_escape')))
+                title = page['title'].encode('unicode_escape').decode('iso-8859-1')
+                if len(title) > 100:
+                    title = title[:100] + '...'
+                print("%d) %s" % (i+1, title))
             while 1:
                 try:
-                    pageidx = int(raw_input("Selection? "))
+                    pageidx = int(input("Selection? "))
                     page = pages[pageidx-1]
                     break
                 except Exception as e:
