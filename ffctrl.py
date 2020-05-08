@@ -51,9 +51,8 @@ class FirefoxDebuggerControl(object):
         self.thread.daemon = True
         self.thread.start()
 
-        self._send_msg('root', 'listTabs', {})
-        reply = next(self._actor_msgs('root'))
-        pages = reply['tabs']
+        tab_list = self._send_recv('root', 'listTabs')
+        pages = tab_list['tabs']
         if len(pages) == 0:
             raise Exception("No pages to attach to!")
         elif len(pages) == 1:
@@ -61,7 +60,8 @@ class FirefoxDebuggerControl(object):
         else:
             print("Select a page to attach to:")
             for i, page in enumerate(pages):
-                title = page['title'].encode('unicode_escape').decode('iso-8859-1')
+                title = self._send_recv(page['actor'], 'getTarget')['frame']['title']
+                title = title.encode('unicode_escape').decode('iso-8859-1')
                 if len(title) > 100:
                     title = title[:100] + '...'
                 print("%d) %s" % (i+1, title))
@@ -73,9 +73,9 @@ class FirefoxDebuggerControl(object):
                 except Exception as e:
                     print("Invalid selection:", e)
 
+        page = self._send_recv(page['actor'], 'getTarget')['frame']
         self.page = page
-        self._send_msg(page['actor'], 'attach', {})
-        reply = next(self._actor_msgs(page['actor']))
+        self._send_recv(page['actor'], 'attach')
 
     def _actor_msgs(self, actor):
         while True:
@@ -102,14 +102,25 @@ class FirefoxDebuggerControl(object):
             msg += chunk
         return json.loads(bytes(msg))
 
-    def _send_msg(self, actor, msgtype, obj):
+    def _send_msg(self, actor, msgtype, obj=None):
         if actor not in self.actors:
             self.actors[actor] = Queue()
+        if obj is None:
+            obj = {}
+        else:
+            obj = obj.copy()
         obj['to'] = actor
         obj['type'] = msgtype
         msg = json.dumps(obj).encode()
         self.sock.send(str(len(msg)).encode() + b':')
         self.sock.send(msg)
+
+    def _send_recv(self, actor, msgtype, obj=None):
+        self._send_msg(actor, msgtype, obj)
+        reply = next(self._actor_msgs(actor))
+        if 'error' in reply:
+            raise Exception(reply['error'], reply.get('message', ''))
+        return reply
 
     def _receive_thread(self):
         ''' Continually read events and command results '''
@@ -122,6 +133,9 @@ class FirefoxDebuggerControl(object):
                 break
 
     def execute(self, cmd):
-        self._send_msg(self.page['consoleActor'], 'evaluateJS', {'text': cmd})
-        resp = next(self._actor_msgs(self.page['consoleActor']))
-        return resp['result']
+        resp = self._send_recv(self.page['consoleActor'], 'evaluateJSAsync', {'text': cmd})
+        resultID = resp['resultID']
+        for result in self._actor_msgs(self.page['consoleActor']):
+            if 'error' in result:
+                raise Exception(reply['error'], reply.get('message', ''))
+            return result['result']
