@@ -136,6 +136,6 @@ class FirefoxDebuggerControl(object):
         resp = self._send_recv(self.page['consoleActor'], 'evaluateJSAsync', {'text': cmd})
         resultID = resp['resultID']
         for result in self._actor_msgs(self.page['consoleActor']):
-            if 'error' in result:
-                raise Exception(reply['error'], reply.get('message', ''))
+            if result['hasException']:
+                raise Exception(result['exceptionMessage'])
             return result['result']
