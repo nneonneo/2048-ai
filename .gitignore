@@ -11,3 +11,6 @@ config.h
 config.log
 config.status
 Makefile
+
+# log
+logs
