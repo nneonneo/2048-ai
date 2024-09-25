@@ -1,8 +1,27 @@
 AI for the [2048 game](http://gabrielecirulli.github.io/2048/). This uses *expectimax optimization*, along with a highly-efficient bitboard representation to search upwards of 10 million moves per second on recent hardware. Heuristics used include bonuses for empty squares and bonuses for placing large values near edges and corners. Read more about the algorithm on the [StackOverflow answer](https://stackoverflow.com/a/22498940/1204143).
 
+## Features
+
+### Expectimax Optimization
+The AI uses expectimax optimization to make decisions. This algorithm searches possible moves and outcomes to choose the one with the highest expected score.
+Highly-efficient Bitboard Representation: The game board is represented using an efficient bitboard format, which allows the AI to search upwards of 10 million moves per second on modern hardware.
+
+### Cross-platform Support
+The project is compatible with Unix, Linux, macOS, and Windows systems.
+
+### Terminal and Browser Control
+The AI can play 2048 in the terminal or control the game directly in a browser, demonstrating its performance with real-time interaction.
+
 ## Building
 
 ### Unix/Linux/OS X
+
+To build the project on Unix/Linux/macOS, follow these steps:
+
+Clone the repository
+
+	git clone https://github.com/nneonneo/2048-ai.git
+	cd 2048-ai
 
 Execute
 
@@ -28,7 +47,9 @@ to run the browser control version, you must use the Cygwin Python (not the pyth
 
 ## Running the command-line version
 
-Run `bin/2048` if you want to see the AI by itself in action.
+To see the AI play the game in the terminal:
+Run
+	./bin/2048
 
 ## Running the browser-control version
 
@@ -45,3 +66,32 @@ Open the game in a new tab, then run `2048.py -b firefox` and watch the game! Th
 Enable Chrome remote debugging by quitting it and then restarting it with the `remote-debugging-port` command-line switch (e.g. `google-chrome --remote-debugging-port=9222`).
 
 Open the game in a new tab, then run `2048.py -b chrome` and watch the game! The `-p` option can be used to set the port to connect to.
+
+## Contributing
+
+We welcome contributions! If you have found a bug or want to suggest a new feature, please raise an issue.
+
+### Guidelines for contributing
+
+1. Fork the repository
+
+2. Clone your fork locally:
+
+	git clone https://github.com/your-username/2048-ai.git
+
+3. Create a new branch for new feature or big fix:
+
+	git checkout -b feature-branch
+
+4. Make your changes, commit, and push:
+
+	git add .
+	git commit -m "Your detailed commit message"
+	git push origin feature-branch
+
+5. Submit the pull request and we will review it!
+
+Remember to test your changes thoroughly to ensure they work as expected. If applicable, include unit tests to verify the functionality of your contribution. Make sure existing tests pass and your changes don’t introduce regressions. Your help is greatly appreciated!
+
+
+
