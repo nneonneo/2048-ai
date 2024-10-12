@@ -45,3 +45,57 @@ Open the game in a new tab, then run `2048.py -b firefox` and watch the game! Th
 Enable Chrome remote debugging by quitting it and then restarting it with the `remote-debugging-port` command-line switch (e.g. `google-chrome --remote-debugging-port=9222`).
 
 Open the game in a new tab, then run `2048.py -b chrome` and watch the game! The `-p` option can be used to set the port to connect to.
+
+## Using the AI interactively
+
+You can also use `2048.py` interactively using `2048.py -b manual`. In this mode, you'll be asked to input the board, after which the AI will give its suggested move. This might be useful for getting hints while playing the game on a platform without autoplay (e.g. on a phone), or for getting the AI's analysis of a given situation.
+
+After each recommendation, the AI will assume you make that recommended move, and then prompt you to make any necessary adjustments to the board (usually, the location and value of the newly spawned tile) before giving its next suggestion.
+
+Sample run:
+
+```
+Enter board one row at a time, with entries separated by spaces
+Row 1: 16 128 256 1024
+Row 2: 16 8 2 0
+Row 3: 8 2 0 0 
+Row 4: 0 4 0 0
+Current board:
+      16      128      256     1024 
+      16        8        2        0 
+       8        2        0        0 
+       0        4        0        0 
+Enter updates in the form r,c,n (1-indexed row/column), separated by spaces: 
+      16      128      256     1024 
+      16        8        2        0 
+       8        2        0        0 
+       0        4        0        0 
+005.030340: Score 0, Move 1: up
+EXECUTE MOVE: up
+Current board:
+      32      128      256     1024 
+       8        8        2        0 
+       0        2        0        0 
+       0        4        0        0 
+Enter updates in the form r,c,n (1-indexed row/column), separated by spaces: 3,1,4
+      32      128      256     1024 
+       8        8        2        0 
+       4        2        0        0 
+       0        4        0        0 
+035.648508: Score 0, Move 2: left
+EXECUTE MOVE: left
+Current board:
+      32      128      256     1024 
+      16        2        0        0 
+       4        2        0        0 
+       4        0        0        0 
+Enter updates in the form r,c,n (1-indexed row/column), separated by spaces: 4,3,2
+      32      128      256     1024 
+      16        2        0        0 
+       4        2        0        0 
+       4        0        2        0 
+058.927319: Score 0, Move 3: left
+EXECUTE MOVE: left
+```
+
+This tells the bot that after the first move, a 4 spawned in the 3rd row, 1st column, and after the second move, a 2 spawned in the 4th row, 3rd column.

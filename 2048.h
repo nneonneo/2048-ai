@@ -52,6 +52,7 @@ extern "C" {
 #endif
 
 DLL_PUBLIC void init_tables();
+DLL_PUBLIC board_t execute_move(int move, board_t board);
 
 typedef int (*get_move_func_t)(board_t);
 DLL_PUBLIC float score_toplevel_move(board_t board, int move);

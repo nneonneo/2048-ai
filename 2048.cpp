@@ -224,7 +224,7 @@ static inline board_t execute_move_3(board_t board) {
 }
 
 /* Execute a move. */
-static inline board_t execute_move(int move, board_t board) {
+board_t execute_move(int move, board_t board) {
     switch(move) {
     case 0: // up
         return execute_move_0(board);

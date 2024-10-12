@@ -4,37 +4,12 @@
 ''' Help the user achieve a high score in a real game of 2048 by using a move searcher. '''
 
 from __future__ import print_function
-import ctypes
 import time
-import os
+
+from ailib import ailib, to_c_board, from_c_index
 
 # Enable multithreading?
 MULTITHREAD = True
-
-for suffix in ['so', 'dll', 'dylib']:
-    dllfn = 'bin/2048.' + suffix
-    if not os.path.isfile(dllfn):
-        continue
-    ailib = ctypes.CDLL(dllfn)
-    break
-else:
-    print("Couldn't find 2048 library bin/2048.{so,dll,dylib}! Make sure to build it first.")
-    exit()
-
-ailib.init_tables()
-
-ailib.find_best_move.argtypes = [ctypes.c_uint64]
-ailib.score_toplevel_move.argtypes = [ctypes.c_uint64, ctypes.c_int]
-ailib.score_toplevel_move.restype = ctypes.c_float
-
-def to_c_board(m):
-    board = 0
-    i = 0
-    for row in m:
-        for c in row:
-            board |= int(c) << (4*i)
-            i += 1
-    return board
 
 def print_board(m):
     for row in m:
@@ -42,12 +17,8 @@ def print_board(m):
             print('%8d' % c, end=' ')
         print()
 
-def _to_val(c):
-    if c == 0: return 0
-    return 2**c
-
 def to_val(m):
-    return [[_to_val(c) for c in row] for row in m]
+    return [[from_c_index(c) for c in row] for row in m]
 
 def _to_score(c):
     if c <= 1:
@@ -110,7 +81,7 @@ def parse_args(argv):
 
     parser = argparse.ArgumentParser(description="Use the AI to play 2048 via browser control")
     parser.add_argument('-p', '--port', help="Port number to control on (default: 32000 for Firefox, 9222 for Chrome)", type=int)
-    parser.add_argument('-b', '--browser', help="Browser you're using. Only Firefox with remote debugging, Firefox with the Remote Control extension (deprecated), and Chrome with remote debugging, are supported right now.", default='firefox', choices=('firefox', 'firefox-rc', 'chrome'))
+    parser.add_argument('-b', '--browser', help="Browser you're using. Only Firefox with remote debugging, Firefox with the Remote Control extension (deprecated), and Chrome with remote debugging, are supported right now.", default='firefox', choices=('firefox', 'firefox-rc', 'chrome', 'manual'))
     parser.add_argument('-k', '--ctrlmode', help="Control mode to use. If the browser control doesn't seem to work, try changing this.", default='hybrid', choices=('keyboard', 'fast', 'hybrid'))
 
     return parser.parse_args(argv)
@@ -134,7 +105,10 @@ def main(argv):
             args.port = 9222
         ctrl = ChromeDebuggerControl(args.port)
 
-    if args.ctrlmode == 'keyboard':
+    if args.browser == 'manual':
+        from manualctrl import ManualControl
+        gamectrl = ManualControl()
+    elif args.ctrlmode == 'keyboard':
         from gamectrl import Keyboard2048Control
         gamectrl = Keyboard2048Control(ctrl)
     elif args.ctrlmode == 'fast':
