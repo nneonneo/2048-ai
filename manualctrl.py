@@ -1,5 +1,12 @@
+from __future__ import print_function
+
 from ailib import ailib, to_c_board, from_c_board, to_c_index, from_c_index
 from gamectrl import Generic2048Control
+
+try:
+    input = raw_input
+except NameError:
+    pass
 
 def print_board(m):
     for row in m:
