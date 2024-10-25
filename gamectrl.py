@@ -178,3 +178,82 @@ class Hybrid2048Control(Fast2048Control, Keyboard2048Control):
     get_score = Fast2048Control.get_score
     get_board = Fast2048Control.get_board
     execute_move = Keyboard2048Control.execute_move
+
+class Play2048CoControl(object):
+    """ Controller for Play2048.co """
+
+    def __init__(self, ctrl):
+        self.ctrl = ctrl
+        self.setup()
+
+    def setup(self):
+        # Get a reference to the game manager object
+        self.ctrl.execute(
+            """
+            (async function() {
+                if(window._2048ai_manager)
+                    return;
+                // look for the main module
+                for(let tag of document.querySelectorAll('script[type="module"]')) {
+                    let module = await import(tag.src);
+                    let manager = null;
+                    // look for the game manager
+                    for(let key of Object.keys(module)) {
+                        if(module[key].subscribe && module[key].move && module[key].sanitize) {
+                            manager = module[key];
+                            break;
+                        }
+                    }
+                    if(manager) {
+                        window._2048ai_module = module;
+                        window._2048ai_manager = manager;
+                        // subscribe to the game and sanitize to read the game state
+                        window._2048ai_manager.subscribe((game) => window._2048ai_game = game);
+                        window._2048ai_manager.sanitize();
+                        break;
+                    }
+                }
+            })();
+            """
+        )
+        time.sleep(0.5)
+
+    def get_status(self):
+        ''' Check if the game is in an unusual state. '''
+        return self.ctrl.execute('''
+            if(window._2048ai_game.state == "fresh" || window._2048ai_game.state == "playing") { "running" }
+            else if(window._2048ai_game.state == "gameOver") { "ended" }
+            else if(window._2048ai_game.state == "gameWon") { "won" }
+            // TODO is this right? how to handle selecting?
+            else { "running" }
+        ''')
+
+    def restart_game(self):
+        return self.ctrl.execute("window._2048ai_manager.reset()")
+
+    def continue_game(self):
+        ''' Continue the game. Only works if the game is in the 'won' state. '''
+        return self.ctrl.execute("window._2048ai_manager.continueAfterWin()")
+
+    def get_score(self):
+        return self.ctrl.execute("window._2048ai_game.score")
+
+    def get_board(self):
+        # Chrome refuses to serialize the Grid object directly through the debugger.
+        grid = json.loads(self.ctrl.execute('JSON.stringify(window._2048ai_game.board)'))
+
+        board = [[0]*4 for _ in range(4)]
+        for row in grid:
+            for cell in row:
+                if cell is None:
+                    continue
+                pos = cell["position"]["x"], cell["position"]["y"]
+                tval = cell['value']
+                board[pos[1]][pos[0]] = int(round(math.log(tval, 2)))
+
+        return board
+
+    def execute_move(self, move):
+        # We use UDLR ordering; 2048 uses URDL ordering
+        movename = ["up", "down", "left", "right"][move]
+        self.ctrl.execute("window._2048ai_manager.move('%s')" % movename)

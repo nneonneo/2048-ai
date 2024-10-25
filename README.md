@@ -42,7 +42,7 @@ Open the game in a new tab, then run `2048.py -b firefox` and watch the game! Th
 
 ### Chrome
 
-Enable Chrome remote debugging by quitting it and then restarting it with the `remote-debugging-port` command-line switch (e.g. `google-chrome --remote-debugging-port=9222`).
+Enable Chrome remote debugging by quitting it and then restarting it with the `remote-debugging-port` and `remote-allow-origins` command-line switches (e.g. `google-chrome --remote-debugging-port=9222 --remote-allow-origins=http://localhost:9222`).
 
 Open the game in a new tab, then run `2048.py -b chrome` and watch the game! The `-p` option can be used to set the port to connect to.
 
