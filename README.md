@@ -21,10 +21,12 @@ You have a few options, depending on what you have installed.
 to run the browser control version, you must use the Cygwin Python (not the python.org Python). For step-by-step instructions, courtesy Tamas Szell (@matukaa), see [this document](https://github.com/nneonneo/2048-ai/wiki/CygwinStepByStep.pdf).
 - Cygwin with MinGW: run
 
-        CXX=x86_64-w64-mingw32-g++ CXXFLAGS='-static-libstdc++ -static-libgcc -D_WINDLL -D_GNU_SOURCE=1' ./configure ; make
+            CXX=x86_64-w64-mingw32-g++ CXXFLAGS='-static-libstdc++ -static-libgcc -D_WINDLL -D_GNU_SOURCE=1' ./configure ; make
 
     in a MinGW or Cygwin shell to build. The resultant DLL can be used with non-Cygwin programs.
 - Visual Studio: open a Visual Studio command prompt, `cd` to the 2048-ai directory, and run `make-msvc.bat`.
+
+Note: 32-bit and 64-bit binaries are not compatible with each other. The bitness of the program loading the DLL and the bitness of the DLL must match, or you will get an error like `%1 is not a valid Win32 application` when loading the DLL. The MinGW instructions above will build a 64-bit DLL by default; use `CXX=i686-w64-mingw32-g++` to get a 32-bit DLL. For Visual Studio, the bitness of the DLL is determined by which command prompt you open; use the "x86 Native Tools Command Prompt" for 32-bit DLLs, or the "x64 Native Tools Command Prompt" for 64-bit DLLs.
 
 ## Running the command-line version
 
