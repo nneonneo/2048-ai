@@ -39,7 +39,7 @@ class ManualControl(Generic2048Control):
         print("Current board:")
         print_board(self.cur_board)
 
-        updates = input("Enter updates in the form r,c,n (1-indexed row/column), separated by spaces: ")
+        updates = input("Enter update(s) in the form r,c,n (1-indexed row/column); separate multiple updates by spaces: ")
         for item in updates.split():
             r, c, n = map(int, item.split(","))
             self.cur_board[r-1][c-1] = to_c_index(n)

@@ -74,7 +74,7 @@ Current board:
       16        8        2        0 
        8        2        0        0 
        0        4        0        0 
-Enter updates in the form r,c,n (1-indexed row/column), separated by spaces: 
+Enter update(s) in the form r,c,n (1-indexed row/column); separate multiple updates by spaces: 
       16      128      256     1024 
       16        8        2        0 
        8        2        0        0 
@@ -86,7 +86,7 @@ Current board:
        8        8        2        0 
        0        2        0        0 
        0        4        0        0 
-Enter updates in the form r,c,n (1-indexed row/column), separated by spaces: 3,1,4
+Enter update(s) in the form r,c,n (1-indexed row/column); separate multiple updates by spaces: 3,1,4
       32      128      256     1024 
        8        8        2        0 
        4        2        0        0 
@@ -98,7 +98,7 @@ Current board:
       16        2        0        0 
        4        2        0        0 
        4        0        0        0 
-Enter updates in the form r,c,n (1-indexed row/column), separated by spaces: 4,3,2
+Enter update(s) in the form r,c,n (1-indexed row/column); separate multiple updates by spaces: 4,3,2
       32      128      256     1024 
       16        2        0        0 
        4        2        0        0 
@@ -108,3 +108,5 @@ EXECUTE MOVE: left
 ```
 
 This tells the bot that after the first move, a 4 spawned in the 3rd row, 1st column, and after the second move, a 2 spawned in the 4th row, 3rd column.
+
+For typical 2048 play, only one update per move is expected (the new tile that spawned), but for certain variants, or in the case of skipped moves, multiple updates may be needed. Place all updates on the same line separated by spaces (e.g. `1,1,4 1,3,2`).
